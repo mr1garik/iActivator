@@ -11,6 +11,7 @@ import traceback
 from datetime import datetime, timedelta
 
 from .core import app_data_dir
+from .i18n import t
 
 KEEP_DAYS = 30
 LEVELS = {"debug": "DEBUG", "info": "INFO ", "ok": "OK   ", "warn": "WARN ", "error": "ERROR"}
@@ -36,6 +37,7 @@ def _guess_level(text: str) -> str:
 
 
 def add(text: str, serial: str = "", level: str = "") -> None:
+    text = t(text)
     now = datetime.now()
     e = {"time": now.strftime("%H:%M:%S"), "level": level or _guess_level(text), "serial": serial or "", "text": text}
     with _lock:

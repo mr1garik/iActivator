@@ -9,6 +9,7 @@ from fpdf import FPDF
 
 from . import __version__
 from .core import ACTIVATION_RU, app_data_dir
+from .i18n import t, set_lang
 
 INK = (46, 48, 53)
 MUTED = (134, 134, 139)
@@ -54,8 +55,8 @@ class _Pdf(FPDF):
         self.set_y(-13)
         self.set_font("ui", "", 8)
         self.set_text_color(*MUTED)
-        self.cell(0, 5, f"Создано в iActivator {__version__} · {self.stamp}", align="L")
-        self.cell(0, 5, f"стр. {self.page_no()}", align="R")
+        self.cell(0, 5, t("Создано в iActivator {ver} · {stamp}", ver=__version__, stamp=self.stamp), align="L")
+        self.cell(0, 5, t("стр. {n}", n=self.page_no()), align="R")
 
 
 def _logo(pdf: FPDF, x: float, y: float, size: float) -> None:
@@ -115,15 +116,15 @@ def _checks(pdf: FPDF, results: list) -> None:
         pdf.set_xy(pdf.l_margin + 5, y)
         pdf.set_font("ui", "B", 10)
         pdf.set_text_color(*INK)
-        pdf.cell(width - 35, 4.8, r["name"])
+        pdf.cell(width - 35, 4.8, t(r["name"]))
         pdf.set_font("ui", "", 8.5)
         pdf.set_text_color(*color)
-        pdf.cell(30, 4.8, word, align="R", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(30, 4.8, t(word), align="R", new_x="LMARGIN", new_y="NEXT")
         if r.get("detail"):
             pdf.set_x(pdf.l_margin + 5)
             pdf.set_font("ui", "", 9)
             pdf.set_text_color(*MUTED)
-            pdf.multi_cell(width - 5, 4.4, r["detail"], new_x="LMARGIN", new_y="NEXT")
+            pdf.multi_cell(width - 5, 4.4, t(r["detail"]), new_x="LMARGIN", new_y="NEXT")
         pdf.ln(1.2)
 
 
@@ -140,19 +141,20 @@ def _steps(pdf: FPDF, steps: list) -> None:
         pdf.set_xy(pdf.l_margin + 5, y)
         pdf.set_font("ui", "B", 10)
         pdf.set_text_color(*INK)
-        pdf.cell(width - 40, 4.8, s.get("name", ""))
+        pdf.cell(width - 40, 4.8, t(s.get("name", "")))
         pdf.set_font("ui", "", 8.5)
         pdf.set_text_color(*color)
-        pdf.cell(35, 4.8, word, align="R", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(35, 4.8, t(word), align="R", new_x="LMARGIN", new_y="NEXT")
         if s.get("detail"):
             pdf.set_x(pdf.l_margin + 5)
             pdf.set_font("ui", "", 9)
             pdf.set_text_color(*MUTED)
-            pdf.multi_cell(width - 5, 4.4, s["detail"], new_x="LMARGIN", new_y="NEXT")
+            pdf.multi_cell(width - 5, 4.4, t(s["detail"]), new_x="LMARGIN", new_y="NEXT")
         pdf.ln(1.2)
 
 
-def build_pdf(info: dict, results: list, steps: list | None = None) -> Path:
+def build_pdf(info: dict, results: list, steps: list | None = None, lang: str = "ru") -> Path:
+    set_lang(lang)
     now = datetime.now()
     stamp = now.strftime("%d.%m.%Y, %H:%M")
     pdf = _Pdf(stamp)
@@ -163,13 +165,13 @@ def build_pdf(info: dict, results: list, steps: list | None = None) -> Path:
     pdf.set_xy(pdf.l_margin + 18, 14.5)
     pdf.set_font("ui", "B", 15)
     pdf.set_text_color(*INK)
-    pdf.cell(90, 7, "Отчёт о проверке iPhone", new_x="LEFT", new_y="NEXT")
+    pdf.cell(90, 7, t("Отчёт о проверке iPhone"), new_x="LEFT", new_y="NEXT")
     pdf.set_font("ui", "", 9)
     pdf.set_text_color(*MUTED)
     pdf.cell(90, 5, "iActivator")
     pdf.set_xy(pdf.w - pdf.r_margin - 60, 14.5)
     pdf.set_font("ui", "", 8.5)
-    pdf.cell(60, 5, "Дата и время проверки", align="R", new_x="LEFT", new_y="NEXT")
+    pdf.cell(60, 5, t("Дата и время проверки"), align="R", new_x="LEFT", new_y="NEXT")
     pdf.set_font("ui", "B", 11)
     pdf.set_text_color(*INK)
     pdf.cell(60, 6, stamp, align="R")
@@ -184,42 +186,42 @@ def build_pdf(info: dict, results: list, steps: list | None = None) -> Path:
 
     bad = sum(r["status"] == "bad" for r in results)
     warn = sum(r["status"] == "warn" for r in results)
-    color, verdict = ((224, 38, 47), f"Найдены неисправности: {bad}") if bad else \
-                     ((199, 119, 0), f"Есть замечания: {warn}") if warn else ((31, 157, 85), "Неисправностей не найдено")
+    color, verdict = ((224, 38, 47), t("Найдены неисправности: {n}", n=bad)) if bad else \
+                     ((199, 119, 0), t("Есть замечания: {n}", n=warn)) if warn else ((31, 157, 85), t("Неисправностей не найдено"))
     pdf.set_font("ui", "B", 11)
     pdf.set_text_color(*color)
     pdf.cell(0, 6, verdict, new_x="LMARGIN", new_y="NEXT")
 
-    _section(pdf, "Устройство")
-    rows = [("Серийный номер", info.get("serial")), ("IMEI", info.get("imei"))]
+    _section(pdf, t("Устройство"))
+    rows = [(t("Серийный номер"), info.get("serial")), (t("IMEI"), info.get("imei"))]
     if info.get("imei2"):
-        rows.append(("IMEI 2", info["imei2"]))
-    rows += [("Модель", f"{info.get('model_name')} ({info.get('model')})"),
-             ("iOS", f"{info.get('ios')} ({info.get('build')})" if info.get("ios") else None),
-             ("Память", info.get("capacity")),
-             ("Активация", str(ACTIVATION_RU.get(info.get("activation"), info.get("activation") or "—")).capitalize()),
-             ("Модем", info.get("baseband"))]
+        rows.append((t("IMEI 2"), info["imei2"]))
+    rows += [(t("Модель"), f"{info.get('model_name')} ({info.get('model')})"),
+             (t("iOS"), f"{info.get('ios')} ({info.get('build')})" if info.get("ios") else None),
+             (t("Память"), info.get("capacity")),
+             (t("Активация"), t(str(ACTIVATION_RU.get(info.get("activation"), info.get("activation") or "—"))).capitalize()),
+             (t("Модем"), info.get("baseband"))]
     _pairs(pdf, rows)
 
     b = info.get("battery") or {}
     if b:
-        _section(pdf, "Батарея")
+        _section(pdf, t("Батарея"))
         brows = []
         if b.get("health") is not None:
-            brows.append(("Ёмкость (здоровье)", f"{b['health']}%"))
+            brows.append((t("Ёмкость (здоровье)"), f"{b['health']}%"))
         if b.get("full_mah"):
-            brows.append(("Текущая / заводская", f"{b['full_mah']} / {b.get('design_mah')} мАч"))
+            brows.append((t("Текущая / заводская"), f"{b['full_mah']} / {b.get('design_mah')} {t('мАч')}"))
         if b.get("cycles") is not None:
-            brows.append(("Циклы зарядки", b["cycles"]))
+            brows.append((t("Циклы зарядки"), b["cycles"]))
         if b.get("level") is not None:
-            brows.append(("Заряд сейчас", f"{b['level']}%"))
+            brows.append((t("Заряд сейчас"), f"{b['level']}%"))
         _pairs(pdf, brows)
 
     if steps:
-        _section(pdf, "Ход активации (последний запуск)")
+        _section(pdf, t("Ход активации (последний запуск)"))
         _steps(pdf, steps)
 
-    _section(pdf, "Проверка")
+    _section(pdf, t("Проверка"))
     _checks(pdf, results)
 
     safe = "".join(c for c in f"{title}_{info.get('serial') or ''}" if c.isalnum() or c in " _-,").strip()

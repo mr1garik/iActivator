@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
+from .i18n import t
+
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding
 from pymobiledevice3 import usbmux
@@ -271,7 +273,7 @@ PANIC_HINTS = [
 
 
 def _check(name, status, detail):
-    return {"name": name, "status": status, "detail": detail}
+    return {"name": t(name), "status": status, "detail": t(detail)}
 
 
 async def _panic_checks(lockdown, days: int = 30) -> list[dict]:
@@ -582,8 +584,8 @@ class Activator:
             _validate_wifi(opts.wifi)
         lockdown = await self.connect()
         v = lockdown.all_values
-        self.log(f"Устройство: {v.get('ProductType')} iOS {v.get('ProductVersion')}, "
-                 f"состояние: {v.get('ActivationState')}")
+        self.log(t("Устройство: {pt} iOS {pv}, состояние: {st}",
+                   pt=v.get('ProductType'), pv=v.get('ProductVersion'), st=v.get('ActivationState')))
 
         # Order matters. Once the iPhone gets online during setup, Setup Assistant fetches
         # its own (empty) configuration from Apple and overwrites ours — the screens then
@@ -650,35 +652,36 @@ class Activator:
         service = MobileActivationService(self.lockdown)
         state = await service.state()
         if state != "Unactivated":
-            self.log(f"Активация не требуется (состояние: {state}).")
+            self.log(t("Активация не требуется (состояние: {state}).", state=state))
             return
         self.log("Активация через серверы Apple (интернет компьютера)…")
         try:
             await service.activate(skip_apple_id_query=True)
         except MobileActivationException as e:
             if "iCloud" in str(e) or "Activation Lock" in str(e):
-                raise UserFacingError(
+                raise UserFacingError(t(
                     "На устройстве включена Блокировка активации (Найти iPhone). "
                     "Введите Apple ID владельца на самом iPhone или снимите устройство с аккаунта "
                     "на icloud.com/find. Программа не обходит эту блокировку."
-                ) from e
+                )) from e
             raise
         self.log("Устройство активировано.")
         await self.connect()
 
     async def set_language_region(self, opts: SetupOptions) -> None:
         locale = f"{opts.language.split('-')[0]}_{opts.region}"
-        self.log(f"Язык: {opts.language}, регион/локаль: {locale}, часовой пояс: {opts.timezone}")
+        self.log(t("Язык: {language}, регион/локаль: {locale}, часовой пояс: {timezone}",
+                   language=opts.language, locale=locale, timezone=opts.timezone))
         await self.lockdown.set_language(opts.language)
         await self.lockdown.set_locale(locale)
         for setter, value, what in (
-            (self.lockdown.set_timezone, opts.timezone, "часовой пояс"),
-            (self.lockdown.set_uses24h_clock, opts.use_24h, "24-часовой формат"),
+            (self.lockdown.set_timezone, opts.timezone, t("часовой пояс")),
+            (self.lockdown.set_uses24h_clock, opts.use_24h, t("24-часовой формат")),
         ):
             try:
                 await setter(value)
             except Exception as e:  # not writable on some iOS versions; not critical
-                self.log(f"  ⚠ не удалось установить {what}: {e}")
+                self.log(t("  ⚠ не удалось установить {what}: {e}", what=what, e=e))
 
     async def apply_cloud_configuration(self, opts: SetupOptions, keybag: Optional[Path]) -> None:
         cert = _cert_der(keybag) if keybag is not None else None
@@ -690,8 +693,8 @@ class Activator:
             if cert is None and current.get("ConfigurationSource") == 2 and current.get("SkipSetup"):
                 self.log("Пропуск экранов уже настроен — пропускаю.")
                 return
-            self.log("Применяю конфигурацию: пропуск экранов настройки" +
-                     (" + контролируемый режим…" if cert is not None else "…"))
+            self.log(t("Применяю конфигурацию: пропуск экранов настройки") +
+                     (t(" + контролируемый режим…") if cert is not None else "…"))
             config = {
                 "AllowPairing": True,
                 "CloudConfigurationUIComplete": True,
@@ -711,19 +714,20 @@ class Activator:
             try:
                 await mc.set_cloud_configuration(config)
             except CloudConfigurationAlreadyPresentError as e:
-                raise UserFacingError(
+                raise UserFacingError(t(
                     "iPhone уже получил свою конфигурацию настройки (он выходил в интернет во время "
                     "настройки, или его настраивали 3uTools / Apple Configurator), и iOS не даёт её заменить. "
                     "Нажмите «Стереть…», затем «Запустить» — после стирания экраны будут пропущены."
-                ) from e
+                )) from e
         self.log("Экраны настройки будут пропущены.")
         await self.connect()
 
     async def install_wifi(self, wifi: WifiOptions, keybag: Optional[Path]) -> None:
         profile, profile_id = build_wifi_profile(wifi)
-        self.log(f"Wi-Fi: «{wifi.ssid}», защита {wifi.security}, "
-                 f"{'скрытая, ' if wifi.hidden else ''}"
-                 f"{'без случайного MAC' if wifi.disable_mac_randomization else 'частный MAC'}")
+        self.log(t("Wi-Fi: «{ssid}», защита {security}, {hidden}{mac}",
+                   ssid=wifi.ssid, security=wifi.security,
+                   hidden=(t("скрытая, ") if wifi.hidden else ""),
+                   mac=(t("без случайного MAC") if wifi.disable_mac_randomization else t("частный MAC"))))
         last_error: Optional[Exception] = None
         for attempt in (1, 2, 3):
             try:
@@ -748,13 +752,13 @@ class Activator:
                 if profile_id in installed:
                     self.log("  Профиль Wi-Fi установлен и подтверждён устройством.")
                     return
-                last_error = UserFacingError("устройство не показало профиль после установки")
+                last_error = UserFacingError(t("устройство не показало профиль после установки"))
             except (ProfileError, ConnectionError, OSError) as e:
                 last_error = e
-            self.log(f"  попытка {attempt} не удалась: {short_error(last_error)}; повтор…")
+            self.log(t("  попытка {attempt} не удалась: {e}; повтор…", attempt=attempt, e=short_error(last_error)))
             await asyncio.sleep(2)
             await self.connect()
-        raise UserFacingError(f"Не удалось установить профиль Wi-Fi: {short_error(last_error)}")
+        raise UserFacingError(t("Не удалось установить профиль Wi-Fi: {e}", e=short_error(last_error)))
 
     async def install_wifi_only(self, wifi: WifiOptions) -> None:
         """Wi-Fi for an already set-up device: silent if this computer supervises it,

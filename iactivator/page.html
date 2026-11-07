@@ -363,6 +363,11 @@
         <div class="seg" id="theme">
           <button data-theme="auto">Как в системе</button><button data-theme="light">Светлая</button><button data-theme="dark">Тёмная</button>
         </div></div>
+      <div class="row"><span class="lbl">Язык программы</span>
+        <select id="uiLang" style="max-width:220px">
+          <option value="ru">Русский</option>
+          <option value="en">Английский (English)</option>
+        </select></div>
     </div>
     <div class="card" id="startupCard" style="display:none">
       <h2>Запуск</h2>
@@ -451,7 +456,190 @@
 
 <script>
 const $ = id => document.getElementById(id);
-let logNext = 0, regions = [], networks = [], known = new Set(), wasBusy = false, info = null;
+let logNext = 0, regions = [], networks = [], known = new Set(), wasBusy = false, info = null, aboutData = null;
+
+// ---------- language (RU default, EN optional) ----------
+// The UI is authored in Russian; T() swaps to English from the map below when LANG==="en".
+// Strings the server sends (step names, check names, journal text, device labels) are also
+// looked up here, so the backend keeps emitting Russian and the page translates for display.
+let LANG = "ru";
+try { const sl = localStorage.getItem("lang"); if (sl === "en" || sl === "ru") LANG = sl; } catch {}
+const T_EN = {
+  // sidebar / nav
+  "Активация": "Activation", "Диагностика": "Diagnostics", "История": "History",
+  "Журнал": "Journal", "Настройки": "Settings", "О программе": "About",
+  "Состояние подключения": "Connection status", "Нет устройства": "No device",
+  // activation page
+  "Подключите iPhone кабелем…": "Connect an iPhone with a cable…",
+  "Подключите iPhone кабелем.": "Connect an iPhone with a cable.",
+  "Обновить": "Refresh",
+  "Проверить iPhone и сохранить PDF-отчёт с датой и временем": "Check the iPhone and save a PDF report with date and time",
+  "PDF-отчёт": "PDF report",
+  "Язык и регион": "Language & region", "Язык": "Language",
+  "Загрузить все языки, которые поддерживает iPhone": "Load every language the iPhone supports",
+  "Все": "All", "Регион": "Region", "Часовой пояс": "Time zone", "24 ч": "24 h",
+  "Режим": "Mode", "Активировать": "Activate",
+  "Через серверы Apple и интернет компьютера": "Through Apple's servers and the computer's internet",
+  "Пропустить экраны настройки": "Skip the setup screens",
+  "Только на сброшенном iPhone": "Only on a reset iPhone",
+  "Wi-Fi ставится без нажатий, но в Настройках вверху будет надпись «iPhone под надзором и контролем …» — убирается только стиранием":
+    "Wi-Fi installs without any taps, but Settings will show “iPhone is supervised and managed…” at the top — removable only by erasing",
+  "Контролируемый режим": "Supervised mode",
+  "Wi-Fi без нажатий, но с надписью в Настройках": "Wi-Fi without taps, but with a note in Settings",
+  "При подключении нового iPhone сразу запускать с текущими настройками":
+    "When a new iPhone connects, start right away with the current settings",
+  "Авто при подключении": "Auto on connect",
+  "Запуск сразу, как только iPhone подключён": "Starts as soon as an iPhone is connected",
+  "Wi-Fi задан, но «Контролируемый режим» выключен — сеть потребует подтверждения на самом iPhone.":
+    "Wi-Fi is set, but “Supervised mode” is off — the network will need confirmation on the iPhone itself.",
+  // Wi-Fi page
+  "Сохранённые": "Saved", "— новая сеть —": "— new network —", "Сохранить": "Save",
+  "Удалить сохранённую сеть": "Delete saved network", "Сеть (SSID)": "Network (SSID)",
+  "не ставить Wi-Fi": "don't set Wi-Fi", "Пароль": "Password", "показать": "show", "Защита": "Security",
+  "Скрытая сеть": "Hidden network", "Без «частного адреса»": "No private address",
+  "Пароли хранятся в системной связке ключей.": "Passwords are stored in the system keychain.",
+  "Установить только Wi-Fi": "Install Wi-Fi only",
+  // diagnostics
+  "Проверка на неисправности": "Fault check", "Проверить": "Check",
+  "Батарея, зарядка, Wi-Fi, Bluetooth, модем, память, журналы сбоев за 30 дней, Локатор и MDM. iPhone должен быть разблокирован.":
+    "Battery, charging, Wi-Fi, Bluetooth, modem, storage, 30-day crash logs, Find My and MDM. The iPhone must be unlocked.",
+  "Опасная зона": "Danger zone",
+  "Стирает все данные и сбрасывает iPhone к заводским настройкам.": "Erases all data and resets the iPhone to factory settings.",
+  "Стереть iPhone…": "Erase iPhone…",
+  // history
+  "Всего устройств": "Devices total", "Сегодня": "Today", "Активировано": "Activated", "С замечаниями": "With issues",
+  "Поиск по серийному номеру, IMEI или модели": "Search by serial number, IMEI or model",
+  "Файл со всей историей — открывается в Excel": "File with the full history — opens in Excel",
+  "Открыть файл": "Open file", "Папка с PDF-отчётами": "Folder with PDF reports", "Отчёты": "Reports",
+  "Модель": "Model", "Серийный №": "Serial no.", "Последнее действие": "Last action",
+  "Пока пусто — устройства появятся здесь после подключения.": "Empty for now — devices will appear here once connected.",
+  "Ничего не найдено": "Nothing found", "Удалить из истории": "Delete from history", "Событий нет": "No events",
+  // journal
+  "Какие записи показывать": "Which entries to show", "Основное": "Main",
+  "Только ошибки и замечания": "Errors and warnings only",
+  "Подробно (с технической информацией)": "Detailed (with technical info)",
+  "Поиск по тексту или серийному номеру": "Search by text or serial number",
+  "Скопировать показанные записи": "Copy the shown entries",
+  "Журналы по дням хранятся 30 дней": "Daily logs are kept for 30 days", "Файлы журнала": "Log files",
+  "Весь журнал и история в одном файле — для своего архива (видны серийные номера и IMEI)":
+    "The whole journal and history in one file — for your own archive (serial numbers and IMEI are visible)",
+  "Выгрузить в файл": "Export to file",
+  "То же, но серийные номера и IMEI скрыты — можно без опасений отправить для проверки":
+    "Same, but serial numbers and IMEI are hidden — safe to send for diagnosis",
+  "Для отправки (без номеров)": "For sharing (no numbers)",
+  "Журнал пуст": "Journal is empty", "Нет записей по этому фильтру": "No entries match this filter",
+  // settings
+  "Оформление": "Appearance", "Тема": "Theme", "Как в системе": "System", "Светлая": "Light", "Тёмная": "Dark",
+  "Язык программы": "App language", "Русский": "Русский", "Английский (English)": "English",
+  "Запуск": "Startup", "Запускать вместе с Windows": "Launch with Windows",
+  "Программа откроется сама при включении компьютера": "The app opens by itself when the computer starts",
+  "Перенос настроек": "Transfer settings",
+  "Сохраните настройки в файл и загрузите его на другом компьютере или после переустановки:\n        сети Wi-Fi, язык, регион, режимы и тему.":
+    "Save your settings to a file and load it on another computer or after reinstalling: Wi-Fi networks, language, region, modes and theme.",
+  "Пароли Wi-Fi и ключ контролируемого режима": "Wi-Fi passwords and the supervision key",
+  "Пароли в файле не зашифрованы — храните его как пароль": "Passwords in the file are not encrypted — keep it like a password",
+  "История устройств": "Device history", "Серийные номера, IMEI и все действия": "Serial numbers, IMEI and every action",
+  "Сохранить в файл…": "Save to file…", "Загрузить из файла…": "Load from file…",
+  // about
+  "Проверить обновления": "Check for updates", "Возможности": "Features",
+  "Активация iPhone через интернет компьютера": "Activate an iPhone over the computer's internet",
+  "Любой язык и регион, включая Украину": "Any language and region, including Ukraine",
+  "Пропуск экранов настройки": "Skipping the setup screens",
+  "Wi-Fi профилем с проверкой установки": "Wi-Fi via a profile, with install verification",
+  "Проверка Локатора, MDM и неисправностей": "Find My, MDM and fault checks",
+  "Сведения": "Details", "Версия": "Version", "Система": "System", "Папка данных": "Data folder",
+  "Открыть папку данных": "Open data folder", "Автор и поддержка проекта": "Author & support",
+  "Новости, вопросы и предложения — в Instagram": "News, questions and suggestions — on Instagram",
+  "Поддержать проект криптовалютой:": "Support the project with crypto:",
+  "Программа не обходит Блокировку активации: iPhone, привязанный к чужому Apple ID, нужно снять с аккаунта владельца.":
+    "The app does not bypass Activation Lock: an iPhone tied to someone else's Apple ID must be removed from the owner's account.",
+  // action bar / preview
+  "Запустить": "Run", "Готово": "Done", "Открыть журнал": "Open the journal",
+  "Проверьте перед запуском": "Check before running",
+  "Эти настройки будут применены к подключённому iPhone. Данные устройства не стираются.":
+    "These settings will be applied to the connected iPhone. The device's data is not erased.",
+  "«Контролируемый режим» выключен — сеть Wi-Fi потребует подтверждения на самом iPhone.":
+    "“Supervised mode” is off — the Wi-Fi network will need confirmation on the iPhone itself.",
+  "Отмена": "Cancel",
+  // device info labels + activation words
+  "Активирован": "Activated", "Не активирован": "Not activated",
+  "iOS": "iOS", "IMEI": "IMEI", "IMEI 2": "IMEI 2", "Ёмкость батареи": "Battery capacity",
+  "Заряд": "Charge", "Циклы": "Cycles",
+  // runtime / journal messages (static ones)
+  "iPhone отключён": "iPhone disconnected", "Подключено устройство, читаю данные…": "Device connected, reading data…",
+  "Нажмите «Проверить».": "Press “Check”.", "Данные устройства прочитаны": "Device data read",
+  "⛔ Авто-режим остановлен: устройство заблокировано": "⛔ Auto mode stopped: the device is locked",
+  "Авто-режим: запускаю активацию": "Auto mode: starting activation",
+  "Читаю данные…": "Reading data…", "Проверяю Локатор и MDM…": "Checking Find My and MDM…",
+  "Не ставить": "Don't set", "Скачать": "Download", "Проверяю…": "Checking…",
+  "Проверяю… (до минуты)": "Checking… (up to a minute)",
+  "Неисправностей не найдено": "No faults found",
+  "Записи журнала скопированы": "Journal entries copied",
+  "Не удалось проверить (нет интернета?).": "Couldn't check (no internet?).",
+  "У вас последняя версия.": "You have the latest version.",
+  "Читаю языки с устройства…": "Reading languages from the device…",
+  "Введите имя сети.": "Enter a network name.",
+  "Файл не читается: это не файл настроек iActivator.": "The file can't be read: it isn't an iActivator settings file.",
+  "Стереть ВСЕ данные на устройстве? Это необратимо.": "Erase ALL data on the device? This cannot be undone.",
+  "Готовлю PDF-отчёт: проверяю iPhone… (до минуты)": "Preparing the PDF report: checking the iPhone… (up to a minute)",
+  "(не сохранена)": "(not saved)", "Найдены неисправности": "Faults found", "Есть замечания": "Warnings",
+  "Загружено языков": "Languages loaded", "Событий нет": "No events", "событий": "events",
+  "батарея": "battery", "Сохранено": "Saved", "Загружено": "Loaded",
+  "Записи журнала скопированы": "Journal entries copied",
+  "✅ Журнал выгружен в файл": "✅ Journal exported to file",
+  "Адрес": "Address", "скопирован": "copied", "Введите имя сети": "Enter a network name",
+  "Доступна новая версия": "A new version is available", "у вас": "you have",
+  "История и настройки сохранятся.": "Your history and settings are kept.",
+  "Есть новая версия": "A new version is available",
+  "кнопка «Скачать» вверху на вкладке «Активация».": "the “Download” button at the top of the Activation tab.",
+};
+function T(s) { if (LANG !== "en" || s == null) return s; return T_EN[s] ?? s; }
+
+// Translate the static shell. Dynamic containers are rendered through T() in JS, so skip them here.
+const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",
+  "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult",
+  "status", "connText", "ver", "aboutVer", "netCount", "histCount", "device", "language", "region",
+  "security", "saved", "quickNet"]);
+const _i18nText = new WeakMap(), _i18nAttr = new WeakMap();
+function _skip(el) { for (let n = el; n; n = n.parentElement) if (n.id && I18N_SKIP.has(n.id)) return true; return false; }
+function translateStatic() {
+  document.querySelectorAll("[title], [placeholder]").forEach(el => {
+    if (_skip(el)) return;
+    let o = _i18nAttr.get(el);
+    if (!o) { o = { title: el.getAttribute("title"), placeholder: el.getAttribute("placeholder") }; _i18nAttr.set(el, o); }
+    if (o.title != null) el.setAttribute("title", T(o.title));
+    if (o.placeholder != null) el.setAttribute("placeholder", T(o.placeholder));
+  });
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) nodes.push(n);
+  for (const n of nodes) {
+    const p = n.parentElement;
+    if (!p || p.tagName === "SCRIPT" || p.tagName === "STYLE" || _skip(p)) continue;
+    let o = _i18nText.get(n);
+    if (o == null) { o = n.nodeValue; _i18nText.set(n, o); }
+    const key = o.trim();
+    if (key && T_EN[key] !== undefined) n.nodeValue = o.replace(key, T(key));
+  }
+}
+function applyLang(lang) {
+  LANG = (lang === "en") ? "en" : "ru";
+  try { localStorage.setItem("lang", LANG); } catch {}
+  document.documentElement.lang = LANG;
+  translateStatic();
+  refreshDynamic();
+}
+function refreshDynamic() {
+  setConn($("device").value ? $("device").selectedOptions[0]?.textContent : "");
+  const st = $("status").textContent.trim();
+  if (st === "Готово" || st === "Done") $("status").textContent = T("Готово");
+  fillNets();
+  renderLog();
+  if (hist && hist.devices) renderHistory();
+  if ($("device").value) onDevice(false);
+  renderAbout();
+  checkUpdate(false);
+}
 
 function fill(select, items, selected) {
   select.innerHTML = "";
@@ -493,7 +681,7 @@ function renderLog(fresh) {
   if (fresh) box.insertAdjacentHTML("beforeend", fresh.filter(logVisible).map(logRow).join(""));
   else box.innerHTML = logEntries.filter(logVisible).slice(-3000).map(logRow).join("");
   $("logEmpty").style.display = box.children.length ? "none" : "";
-  $("logEmpty").textContent = logEntries.length ? "Нет записей по этому фильтру" : "Журнал пуст";
+  $("logEmpty").textContent = logEntries.length ? T("Нет записей по этому фильтру") : T("Журнал пуст");
   if (atEnd || !fresh) box.scrollTop = box.scrollHeight;
 }
 $("logLevel").onchange = () => renderLog();
@@ -505,13 +693,13 @@ async function exportLog(btnId, body) {
   try {
     const res = await api("/api/logs/export", body);
     if (res.error) alert(res.error);
-    else if (res.path) addLog("✅ Журнал выгружен в файл: " + res.path);
+    else if (res.path) addLog(T("✅ Журнал выгружен в файл") + ": " + res.path);
   } finally { b.disabled = false; }
 }
 $("logExport").onclick = () => exportLog("logExport", { history: true });
 $("logSend").onclick = () => exportLog("logSend", { history: false, redact: true });
 $("logCopy").onclick = () => copyText(logEntries.filter(logVisible)
-  .map(e => `${e.time}  ${e.serial || "-"}  ${e.text}`).join("\n"), "Записи журнала скопированы");
+  .map(e => `${e.time}  ${e.serial || "-"}  ${e.text}`).join("\n"), T("Записи журнала скопированы"));
 function copyText(text, done) {
   const ta = document.createElement("textarea");
   ta.value = text; document.body.appendChild(ta); ta.select();
@@ -531,7 +719,7 @@ const dot = s => `<i class="st ${s}"></i>`;
 // ---------- devices ----------
 function setConn(label) {
   $("connDot").classList.toggle("on", !!label);
-  $("connText").textContent = label || "Нет устройства";
+  $("connText").textContent = label || T("Нет устройства");
 }
 async function pollDevices(full) {
   let res;
@@ -541,7 +729,7 @@ async function pollDevices(full) {
   const fresh = res.find(d => !known.has(d.serial));
   known = new Set(res.map(d => d.serial));
   if (!res.length) {
-    fill($("device"), [["Подключите iPhone кабелем…", ""]]);
+    fill($("device"), [[T("Подключите iPhone кабелем…"), ""]]);
     setConn("");
     if (cur) {
       $("info").innerHTML = ""; $("badges").innerHTML = ""; info = null;
@@ -558,27 +746,27 @@ async function pollDevices(full) {
 async function onDevice(isNew) {
   const serial = $("device").value;
   if (!serial) return;
-  if (isNew) addLog("Подключено устройство, читаю данные…", "debug");
+  if (isNew) addLog(T("Подключено устройство, читаю данные…"), "debug");
   $("checkResults").className = "empty";
-  $("checkResults").textContent = "Нажмите «Проверить».";
+  $("checkResults").textContent = T("Нажмите «Проверить».");
   await loadInfo(isNew);
   const locks = await loadLocks(isNew);
   loadHistory();
-  if (isNew) addLog("Данные устройства прочитаны", "debug");
+  if (isNew) addLog(T("Данные устройства прочитаны"), "debug");
   if (isNew && $("auto").checked && info && info.activation === "Unactivated") {
-    if (locks.some(r => r.status === "bad")) addLog("⛔ Авто-режим остановлен: устройство заблокировано", "error");
-    else { addLog("Авто-режим: запускаю активацию"); job("/api/run", form()); }
+    if (locks.some(r => r.status === "bad")) addLog(T("⛔ Авто-режим остановлен: устройство заблокировано"), "error");
+    else { addLog(T("Авто-режим: запускаю активацию")); job("/api/run", form()); }
   }
 }
 
 async function loadInfo(record) {
   const box = $("info");
-  box.innerHTML = '<div class="empty">Читаю данные…</div>';
+  box.innerHTML = `<div class="empty">${T("Читаю данные…")}</div>`;
   const d = await api("/api/info", { serial: $("device").value, record: !!record });
-  if (d.error) { box.innerHTML = `<div class="empty">Не удалось прочитать: ${esc(d.error)}</div>`; info = null; return; }
+  if (d.error) { box.innerHTML = `<div class="empty">${T("Не удалось прочитать")}: ${esc(d.error)}</div>`; info = null; return; }
   info = d;
-  const act = d.activation === "Activated" ? '<span class="good">Активирован</span>'
-            : d.activation === "Unactivated" ? '<span class="warn">Не активирован</span>' : esc(d.activation);
+  const act = d.activation === "Activated" ? `<span class="good">${T("Активирован")}</span>`
+            : d.activation === "Unactivated" ? `<span class="warn">${T("Не активирован")}</span>` : esc(d.activation);
   const items = [["Модель", esc(d.model_name + (d.capacity ? ", " + d.capacity : ""))], ["iOS", esc(d.ios && `${d.ios} (${d.build})`)], ["Серийный №", esc(d.serial)],
                  ["IMEI", esc(d.imei)], ["Активация", act]];
   if (d.imei2) items.splice(4, 0, ["IMEI 2", esc(d.imei2)]);
@@ -586,19 +774,19 @@ async function loadInfo(record) {
   if (b) {
     if (b.health != null) {
       const cls = b.health >= 85 ? "good" : b.health >= 80 ? "warn" : "bad";
-      items.push(["Ёмкость батареи", `<span class="${cls}">${b.health}%</span> · ${b.full_mah}/${b.design_mah} мАч`]);
+      items.push(["Ёмкость батареи", `<span class="${cls}">${b.health}%</span> · ${b.full_mah}/${b.design_mah} ${T("мАч")}`]);
     }
     if (b.level != null) items.push(["Заряд", `${b.level}%${b.charging ? " ⚡" : ""}`]);
     if (b.cycles != null) items.push(["Циклы", esc(b.cycles)]);
   }
-  box.innerHTML = items.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+  box.innerHTML = items.map(([k, v]) => `<div><span>${T(k)}</span><b>${v}</b></div>`).join("");
 }
 
 async function loadLocks(record) {
   const box = $("badges");
-  box.innerHTML = '<div class="empty">Проверяю Локатор и MDM…</div>';
+  box.innerHTML = `<div class="empty">${T("Проверяю Локатор и MDM…")}</div>`;
   const res = await api("/api/locks", { serial: $("device").value, record: !!record });
-  if (res.error) { box.innerHTML = `<div class="empty">Локатор/MDM: ${esc(res.error)}</div>`; return []; }
+  if (res.error) { box.innerHTML = `<div class="empty">${T("Локатор/MDM")}: ${esc(res.error)}</div>`; return []; }
   box.innerHTML = res.map(r => `<div class="badge">${dot(r.status)}<div><b>${esc(r.name)}</b><small>${esc(r.detail)}</small></div></div>`).join("");
   return res;
 }
@@ -606,16 +794,17 @@ async function loadLocks(record) {
 // ---------- settings ----------
 function fillNets() {
   const cur = $("saved").value;
-  fill($("saved"), [["— новая сеть —", ""], ...networks.map(n => [n.ssid, n.ssid])], cur);
-  fill($("quickNet"), [["Не ставить", ""], ...networks.map(n => [n.ssid, n.ssid])], $("ssid").value.trim());
+  fill($("saved"), [[T("— новая сеть —"), ""], ...networks.map(n => [n.ssid, n.ssid])], cur);
+  fill($("quickNet"), [[T("Не ставить"), ""], ...networks.map(n => [n.ssid, n.ssid])], $("ssid").value.trim());
   if ($("ssid").value.trim() && !networks.some(n => n.ssid === $("ssid").value.trim()))
-    fill($("quickNet"), [["Не ставить", ""], [$("ssid").value.trim() + " (не сохранена)", $("ssid").value.trim()],
+    fill($("quickNet"), [[T("Не ставить"), ""], [$("ssid").value.trim() + " " + T("(не сохранена)"), $("ssid").value.trim()],
                          ...networks.map(n => [n.ssid, n.ssid])], $("ssid").value.trim());
   $("netCount").textContent = networks.length || "";
 }
 async function loadSettings(applyLast) {
   const s = await api("/api/settings", {});
   applyTheme(s.ui.theme);
+  if (s.ui.lang === "ru" || s.ui.lang === "en") { LANG = s.ui.lang; try { localStorage.setItem("lang", LANG); } catch {} }
   networks = s.networks;
   fillNets();
   if (!applyLast) return;
@@ -659,8 +848,8 @@ async function checkUpdate(force) {
     if (u && u.available) {
       $("updateBanner").style.display = "";
       $("updateBanner").innerHTML = `<svg><use href="#i-download"/></svg>`
-        + `<span>Доступна новая версия ${esc(u.latest)} (у вас ${esc(u.current)}). История и настройки сохранятся.</span>`
-        + `<button id="updGet">Скачать</button>`;
+        + `<span>${T("Доступна новая версия")} ${esc(u.latest)} (${T("у вас")} ${esc(u.current)}). ${T("История и настройки сохранятся.")}</span>`
+        + `<button id="updGet">${T("Скачать")}</button>`;
       $("updGet").onclick = () => api("/api/update/open", {});
     } else {
       $("updateBanner").style.display = "none";
@@ -690,7 +879,7 @@ function renderSteps(steps) {
 
 // ---------- actions ----------
 function needDevice() {
-  if (!$("device").value) { alert("Подключите iPhone кабелем."); return false; }
+  if (!$("device").value) { alert(T("Подключите iPhone кабелем.")); return false; }
   return true;
 }
 async function job(path, body) {
@@ -731,7 +920,7 @@ async function runCheck() {
   if (!needDevice()) return;
   const box = $("checkResults");
   $("check").disabled = true;
-  box.className = "empty"; box.textContent = "Проверяю… (до минуты)";
+  box.className = "empty"; box.textContent = T("Проверяю… (до минуты)");
   try {
     const res = await api("/api/check", { serial: $("device").value });
     loadHistory();
@@ -739,7 +928,7 @@ async function runCheck() {
     const bad = res.filter(r => r.status === "bad").length, warn = res.filter(r => r.status === "warn").length;
     box.className = "";
     box.innerHTML = `<div class="summary ${bad ? "bad" : warn ? "warn" : "good"}">${
-      bad ? `Найдены неисправности: ${bad}` : warn ? `Есть замечания: ${warn}` : "Неисправностей не найдено"}</div>
+      bad ? `${T("Найдены неисправности")}: ${bad}` : warn ? `${T("Есть замечания")}: ${warn}` : T("Неисправностей не найдено")}</div>
       <div class="results">${res.map(r => `<div class="item">${dot(r.status)}<div><b>${esc(r.name)}</b><small>${esc(r.detail)}</small></div></div>`).join("")}</div>`;
   } finally { $("check").disabled = false; }
 }
@@ -759,19 +948,19 @@ function renderHistory() {
   const q = $("histSearch").value.trim().toLowerCase();
   const list = hist.devices.filter(d => !q || [d.serial, d.id, d.imei, d.imei2, d.model, d.name].some(v => v && v.toLowerCase().includes(q)));
   $("histEmpty").style.display = list.length ? "none" : "";
-  $("histEmpty").textContent = hist.devices.length ? "Ничего не найдено" : "Пока пусто — устройства появятся здесь после подключения.";
+  $("histEmpty").textContent = hist.devices.length ? T("Ничего не найдено") : T("Пока пусто — устройства появятся здесь после подключения.");
   $("histBody").innerHTML = list.map(d => {
     const key = d.id || d.serial;
     const last = d.events[d.events.length - 1];
     const row = `<tr class="dev-row" data-key="${esc(key)}">
-      <td><b>${esc(d.model_name || d.model || "—")}</b>${d.capacity ? " · " + esc(d.capacity) : ""}<br><small class="empty">iOS ${esc(d.ios || "—")}${d.battery != null ? " · батарея " + d.battery + "%" : ""}</small></td>
+      <td><b>${esc(d.model_name || d.model || "—")}</b>${d.capacity ? " · " + esc(d.capacity) : ""}<br><small class="empty">iOS ${esc(d.ios || "—")}${d.battery != null ? " · " + T("батарея") + " " + d.battery + "%" : ""}</small></td>
       <td class="mono">${esc(d.serial || d.id)}</td>
       <td class="mono">${esc(d.imei)}${d.imei2 ? "<br>" + esc(d.imei2) : ""}</td>
-      <td>${last ? `<div style="display:flex;gap:8px">${dot(RES[last.result])}<div><b>${esc(last.action)}</b><br><small class="empty">${esc(last.time)} · событий: ${d.events.length}</small></div></div>` : "—"}</td></tr>`;
+      <td>${last ? `<div style="display:flex;gap:8px">${dot(RES[last.result])}<div><b>${esc(T(last.action))}</b><br><small class="empty">${esc(last.time)} · ${T("событий")}: ${d.events.length}</small></div></div>` : "—"}</td></tr>`;
     if (openRow !== key) return row;
-    const evs = [...d.events].reverse().map(e => `<div class="ev"><time>${esc(e.time)}</time>${dot(RES[e.result])}<b>${esc(e.action)}</b><small>${esc(e.detail || "")}</small></div>`).join("");
-    return row + `<tr class="events"><td colspan="4">${evs || '<span class="empty">Событий нет</span>'}
-      <div style="text-align:right;margin-top:6px"><button class="ghost-danger" data-del="${esc(key)}">Удалить из истории</button></div></td></tr>`;
+    const evs = [...d.events].reverse().map(e => `<div class="ev"><time>${esc(e.time)}</time>${dot(RES[e.result])}<b>${esc(T(e.action))}</b><small>${esc(T(e.detail || ""))}</small></div>`).join("");
+    return row + `<tr class="events"><td colspan="4">${evs || `<span class="empty">${T("Событий нет")}</span>`}
+      <div style="text-align:right;margin-top:6px"><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
   }).join("");
 }
 $("histSearch").oninput = renderHistory;
@@ -781,7 +970,7 @@ async function makeReport() {
   if (!needDevice()) return;
   const btns = document.querySelectorAll(".report-btn");
   btns.forEach(b => b.disabled = true);
-  addLog("Готовлю PDF-отчёт: проверяю iPhone… (до минуты)");
+  addLog(T("Готовлю PDF-отчёт: проверяю iPhone… (до минуты)"));
   try {
     const res = await api("/api/report", { serial: $("device").value });
     if (res.error) alert(res.error);
@@ -792,7 +981,7 @@ document.querySelectorAll(".report-btn").forEach(b => b.onclick = makeReport);
 $("histBody").onclick = async e => {
   const del = e.target.closest("[data-del]");
   if (del) {
-    if (!confirm(`Удалить устройство ${del.dataset.del} из истории?`)) return;
+    if (!confirm(LANG === "en" ? `Delete device ${del.dataset.del} from history?` : `Удалить устройство ${del.dataset.del} из истории?`)) return;
     await api("/api/history/delete", { serial: del.dataset.del });
     openRow = null; return loadHistory();
   }
@@ -834,7 +1023,7 @@ $("exportBtn").onclick = async () => {
   $("exportBtn").disabled = true;
   try {
     const res = await api("/api/settings/export", { secrets: $("expSecrets").checked, history: $("expHistory").checked });
-    $("transferResult").textContent = res.error ? "❌ " + res.error : res.path ? "Сохранено: " + res.path : "";
+    $("transferResult").textContent = res.error ? "❌ " + res.error : res.path ? T("Сохранено") + ": " + res.path : "";
   } finally { $("exportBtn").disabled = false; }
 };
 $("importBtn").onclick = () => { $("importFile").value = ""; $("importFile").click(); };
@@ -842,10 +1031,10 @@ $("importFile").onchange = async () => {
   const f = $("importFile").files[0];
   if (!f) return;
   let data;
-  try { data = JSON.parse(await f.text()); } catch { return alert("Файл не читается: это не файл настроек iActivator."); }
+  try { data = JSON.parse(await f.text()); } catch { return alert(T("Файл не читается: это не файл настроек iActivator.")); }
   const res = await api("/api/settings/import", { data, name: f.name });
   if (res.error) { $("transferResult").textContent = "❌ " + res.error; return alert(res.error); }
-  $("transferResult").textContent = "Загружено: " + res.done.join(", ");
+  $("transferResult").textContent = T("Загружено") + ": " + res.done.join(", ");
   await loadSettings(true);
   loadHistory();
 };
@@ -853,13 +1042,24 @@ $("importFile").onchange = async () => {
 // ---------- support ----------
 function showSupport(a) {
   $("insta").onclick = () => api("/api/open-url", { url: a.instagram });
-  $("wallets").innerHTML = a.wallets.length ? `<p class="hint">Поддержать проект криптовалютой:</p>` + a.wallets.map(([name, addr], i) =>
+  $("wallets").innerHTML = a.wallets.length ? `<p class="hint">${T("Поддержать проект криптовалютой:")}</p>` + a.wallets.map(([name, addr], i) =>
     `<div class="wallet"><b>${esc(name)}</b><code title="${esc(addr)}">${esc(addr)}</code>
      <button class="icon" data-wallet="${i}" title="Скопировать адрес"><svg><use href="#i-copy"/></svg></button></div>`).join("") : "";
   $("wallets").onclick = e => {
     const b = e.target.closest("[data-wallet]");
-    if (b) copyText(a.wallets[b.dataset.wallet][1], `Адрес ${a.wallets[b.dataset.wallet][0]} скопирован`);
+    if (b) copyText(a.wallets[b.dataset.wallet][1], `${T("Адрес")} ${a.wallets[b.dataset.wallet][0]} ${T("скопирован")}`);
   };
+}
+
+function renderAbout() {
+  if (!aboutData) return;
+  const a = aboutData;
+  $("ver").textContent = (LANG === "en" ? "version " : "версия ") + a.version;
+  $("aboutVer").textContent = LANG === "en" ? "Version " + a.version + " · iPhone activation & setup"
+                                            : "Версия " + a.version + " · активация и настройка iPhone";
+  $("aboutInfo").innerHTML = [["Версия", a.version], ["Система", a.system], ["Python", a.python],
+    ["pymobiledevice3", a.pymobiledevice3], ["Папка данных", a.data_dir]]
+    .map(([k, v]) => `<dt>${T(k)}</dt><dd>${esc(v)}</dd>`).join("");
 }
 
 async function init() {
@@ -868,13 +1068,10 @@ async function init() {
   regions = meta.regions;
   fill($("region"), regions.map(([n, c]) => [n, c]), "UA");
   fill($("security"), meta.security, "Any");
-  const a = meta.about;
-  $("ver").textContent = "версия " + a.version;
-  $("aboutVer").textContent = "Версия " + a.version + " · активация и настройка iPhone";
-  $("aboutInfo").innerHTML = [["Версия", a.version], ["Система", a.system], ["Python", a.python],
-    ["pymobiledevice3", a.pymobiledevice3], ["Папка данных", a.data_dir]]
-    .map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
-  showSupport(a);
+  aboutData = meta.about;
+  const a = aboutData;
+  renderAbout();
+  showSupport(aboutData);
   if (a.autostart_supported) {
     $("startupCard").style.display = "";
     $("autostart").checked = a.autostart;
@@ -885,6 +1082,10 @@ async function init() {
   }
   await loadSettings(true);
   updateWifiHint();
+  $("uiLang").value = LANG;
+  $("uiLang").onchange = () => { const v = $("uiLang").value; api("/api/settings/ui", { lang: v }); applyLang(v); };
+  document.documentElement.lang = LANG;
+  if (LANG === "en") { translateStatic(); $("status").textContent = T("Готово"); }
   checkUpdate(false);
   pollLog();
   loadHistory();
@@ -901,11 +1102,11 @@ $("start").onclick = start;
 $("status").onclick = () => show("log");
 $("openData").onclick = () => api("/api/open-data", {});
 $("checkUpd").onclick = async () => {
-  $("updResult").textContent = "Проверяю…";
+  $("updResult").textContent = T("Проверяю…");
   const u = await checkUpdate(true);
-  if (!u || u.error) $("updResult").textContent = "Не удалось проверить (нет интернета?).";
-  else if (u.available) $("updResult").innerHTML = `Есть новая версия ${esc(u.latest)} — кнопка «Скачать» вверху на вкладке «Активация».`;
-  else $("updResult").textContent = "У вас последняя версия.";
+  if (!u || u.error) $("updResult").textContent = T("Не удалось проверить (нет интернета?).");
+  else if (u.available) $("updResult").innerHTML = `${T("Есть новая версия")} ${esc(u.latest)} — ${T("кнопка «Скачать» вверху на вкладке «Активация».")}`;
+  else $("updResult").textContent = T("У вас последняя версия.");
 };
 $("region").onchange = () => {
   const r = regions.find(([, c]) => c === $("region").value);
@@ -917,7 +1118,7 @@ $("showPass").onchange = () => { $("password").type = $("showPass").checked ? "t
 $("saved").onchange = pickNetwork;
 $("saveNet").onclick = async () => {
   const ssid = $("ssid").value.trim();
-  if (!ssid) return alert("Введите имя сети.");
+  if (!ssid) return alert(T("Введите имя сети") + ".");
   const res = await api("/api/network/save", form());
   if (res.error) return alert(res.error);
   await loadSettings(false);
@@ -926,7 +1127,7 @@ $("saveNet").onclick = async () => {
 };
 $("delNet").onclick = async () => {
   const ssid = $("saved").value;
-  if (!ssid || !confirm(`Удалить сохранённую сеть «${ssid}» и её пароль?`)) return;
+  if (!ssid || !confirm(LANG === "en" ? `Delete the saved network “${ssid}” and its password?` : `Удалить сохранённую сеть «${ssid}» и её пароль?`)) return;
   $("saved").value = "";
   await api("/api/network/delete", { ssid });
   await loadSettings(false);
@@ -934,20 +1135,20 @@ $("delNet").onclick = async () => {
 };
 $("loadLangs").onclick = async () => {
   if (!needDevice()) return;
-  addLog("Читаю языки с устройства…");
+  addLog(T("Читаю языки с устройства…"));
   const res = await api("/api/languages", { serial: $("device").value });
   if (res.error) return;
   fill($("language"), res.map(c => [c, c]), $("language").value);
-  addLog(`Загружено языков: ${res.length}`);
+  addLog(`${T("Загружено языков")}: ${res.length}`);
 };
 $("wifiOnly").onclick = () => {
   if (!needDevice()) return;
-  if (!$("ssid").value) return alert("Введите имя сети.");
+  if (!$("ssid").value) return alert(T("Введите имя сети") + ".");
   job("/api/wifi", form());
 };
 $("erase").onclick = () => {
   if (!needDevice()) return;
-  if (!confirm("Стереть ВСЕ данные на устройстве? Это необратимо.")) return;
+  if (!confirm(T("Стереть ВСЕ данные на устройстве? Это необратимо."))) return;
   job("/api/erase", { serial: $("device").value });
 };
 init();

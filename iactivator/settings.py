@@ -18,6 +18,7 @@ from .core import app_data_dir
 
 SERVICE = "iActivator Wi-Fi"
 THEMES = ("auto", "light", "dark")
+LANGS = ("ru", "en")
 EXPORT_KIND = "iActivator settings"
 _lock = threading.Lock()
 
@@ -35,6 +36,7 @@ def load() -> dict:
     data.setdefault("last", {})
     data.setdefault("ui", {})
     data["ui"].setdefault("theme", "auto")
+    data["ui"].setdefault("lang", "ru")
     return data
 
 
@@ -86,6 +88,8 @@ def save_ui(values: dict) -> None:
         data = load()
         if values.get("theme") in THEMES:
             data["ui"]["theme"] = values["theme"]
+        if values.get("lang") in LANGS:
+            data["ui"]["lang"] = values["lang"]
         _save(data)
 
 
@@ -144,6 +148,8 @@ def import_data(src: dict) -> list[str]:
             done.append("Язык, регион и режимы")
         if isinstance(src.get("ui"), dict) and src["ui"].get("theme") in THEMES:
             data["ui"]["theme"] = src["ui"]["theme"]
+        if isinstance(src.get("ui"), dict) and src["ui"].get("lang") in LANGS:
+            data["ui"]["lang"] = src["ui"]["lang"]
             done.append("Тема оформления")
         _save(data)
     if src.get("supervision_keybag"):

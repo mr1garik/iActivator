@@ -18,7 +18,8 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import __version__, applog, autostart, core, history, report, settings, tray, update
+from . import __version__, applog, autostart, core, history, i18n, report, settings, tray, update
+from .i18n import t
 
 LANGUAGES = [
     ("Украинский", "uk"), ("Русский", "ru"), ("Английский (США)", "en"), ("Английский (Великобритания)", "en-GB"),
@@ -121,7 +122,7 @@ class State:
                 self.log(f"❌ {e}", serial)
                 self.fail_running_steps(str(e))
             except Exception as e:
-                self.log("❌ Ошибка: " + core.short_error(e), serial)
+                self.log(t("❌ Ошибка: ") + core.short_error(e), serial)
                 applog.exception(e, serial)
                 self.fail_running_steps(core.short_error(e))
             finally:
@@ -135,12 +136,13 @@ STATE = State()
 
 async def _with_activator(serial, fn, action, detail=""):
     act = core.Activator(serial, lambda m: STATE.log(m, serial), step=STATE.set_step)
-    STATE.log(f"▶ {action}" + (f": {detail}" if detail else ""), serial)
+    STATE.log(t("▶ {action}: {detail}", action=t(action), detail=detail) if detail
+              else t("▶ {action}", action=t(action)), serial)
     started = time.monotonic()
     try:
         await fn(act)
         history.add_event(serial, action, "ok", detail)
-        STATE.log(f"✅ {action}: готово за {time.monotonic() - started:.0f} с", serial)
+        STATE.log(t("✅ {action}: готово за {secs} с", action=t(action), secs=f"{time.monotonic() - started:.0f}"), serial)
     except Exception as e:
         history.add_event(serial, action, "error", str(e) if isinstance(e, core.UserFacingError) else core.short_error(e))
         raise
@@ -153,14 +155,14 @@ def _record_checks(serial: str, action: str, results: list) -> None:
     warn = [r for r in results if r["status"] == "warn"]
     for r in results:
         level = {"bad": "error", "warn": "warn", "ok": "ok"}.get(r["status"], "info")
-        STATE.log(f"{action} · {r['name']}: {r['detail']}", serial, level if level != "ok" else "debug")
-    STATE.log(f"{action}: " + (f"неисправностей {len(bad)}, замечаний {len(warn)}" if bad or warn else "без замечаний"),
+        STATE.log(f"{t(action)} · {r['name']}: {r['detail']}", serial, level if level != "ok" else "debug")
+    STATE.log(f"{t(action)}: " + (t("неисправностей {bad}, замечаний {warn}", bad=len(bad), warn=len(warn)) if bad or warn else t("без замечаний")),
               serial, "error" if bad else "warn" if warn else "ok")
     if bad or warn:
         detail = "; ".join(f"{r['name']}: {r['detail']}" for r in bad + warn)
         history.add_event(serial, action, "error" if bad else "warn", detail)
     else:
-        history.add_event(serial, action, "ok", "Без замечаний")
+        history.add_event(serial, action, "ok", t("Без замечаний"))
 
 
 def _wifi(d: dict):
@@ -203,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _fail(self, e: Exception, serial: str, what: str):
-        STATE.log(f"❌ {what}: {core.short_error(e)}", serial)
+        STATE.log(f"❌ {t(what)}: {core.short_error(e)}", serial)
         applog.exception(e, serial)
         return self._send(200, {"error": core.short_error(e)})
 
@@ -214,15 +216,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, PAGE, "text/html; charset=utf-8")
         if self.path == "/api/meta":
             return self._send(200, {
-                "languages": LANGUAGES, "regions": REGIONS,
-                "security": [[k, v] for k, v in core.WIFI_SECURITY.items()],
+                "languages": [[t(n), c] for n, c in LANGUAGES], "regions": [[t(n), c, tz] for n, c, tz in REGIONS],
+                "security": [[t(k), v] for k, v in core.WIFI_SECURITY.items()],
+                "lang": i18n.get_lang(),
                 "about": _about(),
             })
         if self.path.startswith("/api/update"):
             return self._send(200, update.check(force="force" in self.path))
         if self.path.startswith("/api/log"):
             entries, total = applog.since(int(self.path.partition("since=")[2] or 0))
-            return self._send(200, {"entries": entries, "next": total, "busy": STATE.busy, "steps": STATE.steps})
+            steps = [{**s, "name": t(s["name"]), "detail": t(s["detail"])} for s in STATE.steps]
+            return self._send(200, {"entries": entries, "next": total, "busy": STATE.busy, "steps": steps})
         if self.path.startswith("/api/devices"):
             # Polled every few seconds: cheap usbmux listing, full labels only for new devices
             # or when the page asks for a refresh.
@@ -233,7 +237,7 @@ class Handler(BaseHTTPRequestHandler):
                 STATE.last_device_error = ""
                 return self._send(200, [{"serial": s, "label": STATE.labels.get(s, s)} for s in serials])
             except Exception as e:
-                msg = f"Не удалось получить список устройств: {core.short_error(e)}"
+                msg = t("Не удалось получить список устройств: {e}", e=core.short_error(e))
                 if msg != STATE.last_device_error:  # polled every 3 s: log a failure once, not every time
                     STATE.log("⚠ " + msg)
                     applog.exception(e)
@@ -254,23 +258,26 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"password": settings.get_password(d.get("ssid", ""))})
         if self.path == "/api/network/save":
             if not d.get("ssid", "").strip():
-                return self._send(400, {"error": "Введите имя сети"})
+                return self._send(400, {"error": t("Введите имя сети")})
             settings.save_network(d["ssid"], d.get("password", ""), d.get("security", "Any"),
                                   bool(d.get("hidden")), bool(d.get("nomac", True)))
-            STATE.log(f"Сеть «{d['ssid'].strip()}» сохранена (защита {d.get('security', 'Any')}"
-                      + (", скрытая" if d.get("hidden") else "") + ")")
+            STATE.log(t("Сеть «{ssid}» сохранена (защита {security}{hidden})", ssid=d['ssid'].strip(),
+                        security=d.get('security', 'Any'), hidden=(t(", скрытая") if d.get("hidden") else "")))
             return self._send(200, settings.load())
         if self.path == "/api/network/delete":
             settings.delete_network(d.get("ssid", ""))
-            STATE.log(f"Сеть «{d.get('ssid', '')}» удалена")
+            STATE.log(t("Сеть «{ssid}» удалена", ssid=d.get('ssid', '')))
             return self._send(200, settings.load())
         if self.path == "/api/settings/autostart":
             on = autostart.set_enabled(bool(d.get("on")))
-            STATE.log("Автозапуск с Windows: " + ("включён" if on else "выключен"))
+            STATE.log(t("Автозапуск с Windows: {state}", state=t("включён") if on else t("выключен")))
             return self._send(200, {"autostart": on})
         if self.path == "/api/settings/ui":
             settings.save_ui(d)
-            STATE.log(f"Тема оформления: {THEME_NAMES.get(d.get('theme'), d.get('theme'))}", level="debug")
+            if d.get("lang") in settings.LANGS:
+                i18n.set_lang(d["lang"])
+            if d.get("theme"):
+                STATE.log(t("Тема оформления: {theme}", theme=t(THEME_NAMES.get(d.get("theme"), d.get("theme")))), level="debug")
             return self._send(200, settings.load())
         if self.path == "/api/settings/export":
             return self._send(200, _export(bool(d.get("secrets")), bool(d.get("history"))))
@@ -278,9 +285,9 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 done = settings.import_data(d.get("data"))
             except Exception as e:
-                STATE.log(f"❌ Импорт настроек: {e}")
-                return self._send(200, {"error": f"Не удалось загрузить настройки: {e}"})
-            STATE.log(f"✅ Настройки загружены из «{d.get('name', 'файла')}»")
+                STATE.log(t("❌ Импорт настроек: {e}", e=e))
+                return self._send(200, {"error": t("Не удалось загрузить настройки: {e}", e=e)})
+            STATE.log(t("✅ Настройки загружены из «{name}»", name=d.get('name') or t("файла")))
             for line in done:
                 STATE.log("  " + line, level="warn" if line.startswith("⚠") else "info")
             return self._send(200, {"done": done})
@@ -322,7 +329,7 @@ class Handler(BaseHTTPRequestHandler):
 
         serial = d.get("serial")
         if not serial:
-            return self._send(400, {"error": "Не выбрано устройство"})
+            return self._send(400, {"error": t("Не выбрано устройство")})
 
         if self.path == "/api/locks":
             try:
@@ -348,7 +355,7 @@ class Handler(BaseHTTPRequestHandler):
                 history.update_device(info)
                 results = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy))
                 _record_checks(serial, "Диагностика", results)
-                path = report.build_pdf(info, results, STATE.steps)
+                path = report.build_pdf(info, results, STATE.steps, lang=i18n.get_lang())
                 history.add_event(serial, "PDF-отчёт", "info", path.name)
                 STATE.log(f"📄 Отчёт сохранён: {path}", serial, "ok")
                 report.open_file(path)
@@ -364,7 +371,7 @@ class Handler(BaseHTTPRequestHandler):
                     settings.save_network(d["ssid"], d.get("password", ""), d.get("security", "Any"),
                                           bool(d.get("hidden")), bool(d.get("nomac", True)))
             except Exception as e:
-                STATE.log(f"⚠ Не удалось сохранить сеть: {e}", serial)
+                STATE.log(t("⚠ Не удалось сохранить сеть: {e}", e=e), serial)
 
         if self.path == "/api/languages":
             try:
@@ -402,7 +409,7 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/wifi":
             wifi = _wifi(d)
             if wifi is None:
-                return self._send(400, {"error": "Введите имя сети"})
+                return self._send(400, {"error": t("Введите имя сети")})
             STATE.set_steps([])
             job = lambda: _with_activator(serial, lambda a: a.install_wifi_only(wifi), "Wi-Fi", f"«{wifi.ssid}»")
         elif self.path == "/api/erase":
@@ -442,10 +449,10 @@ def _export(secrets: bool, with_history: bool) -> dict:
     except OSError as e:
         STATE.log(f"❌ Не удалось сохранить настройки: {e}")
         return {"error": f"Не удалось сохранить файл: {e}"}
-    STATE.log(f"✅ Настройки сохранены в файл: {path}")
+    STATE.log(t("✅ Настройки сохранены в файл: {path}", path=path))
     STATE.log(f"  Сети Wi-Fi: {len(data['networks'])}" + (", с паролями" if secrets else ", без паролей")
               + (", ключ контролируемого режима" if "supervision_keybag" in data else "")
-              + (f", история: устройств {len(data['history'])}" if "history" in data else ""))
+              + (t(", история: устройств {n}", n=len(data['history'])) if "history" in data else ""))
     if WINDOW is None:
         _open_folder(str(path.parent))
     return {"path": str(path)}
@@ -579,6 +586,7 @@ def main():
         webview = None
 
     applog.cleanup()
+    i18n.set_lang(settings.load()["ui"].get("lang", "ru"))
     STATE.log(f"iActivator {__version__} запущен · {platform.system()} {platform.release()} · Python {platform.python_version()}",
               level="debug")
 
