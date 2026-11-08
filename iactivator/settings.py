@@ -18,7 +18,7 @@ from .core import app_data_dir
 
 SERVICE = "iActivator Wi-Fi"
 THEMES = ("auto", "light", "dark")
-LANGS = ("ru", "en")
+LANGS = ("ru", "en", "uk")
 EXPORT_KIND = "iActivator settings"
 _lock = threading.Lock()
 
