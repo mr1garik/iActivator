@@ -130,7 +130,7 @@ class DeviceInfo:
     activation_state: str
 
     def label(self) -> str:
-        state = ACTIVATION_RU.get(self.activation_state, self.activation_state)
+        state = t(ACTIVATION_RU.get(self.activation_state, self.activation_state))
         return f"{model_name(self.product_type)} · iOS {self.ios} · {state} · {self.serial}"
 
 
@@ -665,8 +665,24 @@ class Activator:
                     "на icloud.com/find. Программа не обходит эту блокировку."
                 )) from e
             raise
+        except Exception:
+            # The connection can drop at the exact moment activation finishes and
+            # surface as a generic error (e.g. "coroutine ignored GeneratorExit"),
+            # even though Apple already activated the device. Re-check before failing.
+            if await self._now_activated():
+                self.log("Устройство активировано.")
+                return
+            raise
         self.log("Устройство активировано.")
         await self.connect()
+
+    async def _now_activated(self) -> bool:
+        """Reconnect and report whether the device is already activated."""
+        try:
+            await self.connect()
+            return (await MobileActivationService(self.lockdown).state()) == "Activated"
+        except Exception:
+            return False
 
     async def set_language_region(self, opts: SetupOptions) -> None:
         locale = f"{opts.language.split('-')[0]}_{opts.region}"

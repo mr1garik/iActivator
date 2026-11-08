@@ -186,11 +186,16 @@ def build_pdf(info: dict, results: list, steps: list | None = None, lang: str = 
 
     bad = sum(r["status"] == "bad" for r in results)
     warn = sum(r["status"] == "warn" for r in results)
-    color, verdict = ((224, 38, 47), t("Найдены неисправности: {n}", n=bad)) if bad else \
-                     ((199, 119, 0), t("Есть замечания: {n}", n=warn)) if warn else ((31, 157, 85), t("Неисправностей не найдено"))
-    pdf.set_font("ui", "B", 11)
+    color = (224, 38, 47) if bad else (199, 119, 0) if warn else (31, 157, 85)
+    verdict_label = t("Не годен") if bad else t("Годен с замечаниями") if warn else t("Годен")
+    detail = t("Найдены неисправности: {n}", n=bad) if bad else \
+             t("Есть замечания: {n}", n=warn) if warn else t("Неисправностей не найдено")
+    pdf.set_font("ui", "B", 15)
     pdf.set_text_color(*color)
-    pdf.cell(0, 6, verdict, new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 8, verdict_label, new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("ui", "B", 10)
+    pdf.set_text_color(*color)
+    pdf.cell(0, 5, detail, new_x="LMARGIN", new_y="NEXT")
 
     _section(pdf, t("Устройство"))
     rows = [(t("Серийный номер"), info.get("serial")), (t("IMEI"), info.get("imei"))]
