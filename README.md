@@ -108,5 +108,9 @@ The interface opens in its own window (WebKit on Mac, Edge WebView2 on Windows).
 - If the iPhone already has a configuration from 3uTools or another computer, press "Erase device" first.
 - The app does **not** bypass iCloud Activation Lock: it's for your own or already-reset devices.
 
+## Related projects
+
+🩺 **[iOS Panic Reader](https://github.com/mr1garik/ios-panic-reader)** — connect an iPhone over USB and it reads the panic/crash logs and tells you in plain words which part is faulty and what to do. A natural companion to iActivator (Windows & macOS, free).
+
 ## License
 MIT — free to use, modify and distribute. See [LICENSE](LICENSE).
