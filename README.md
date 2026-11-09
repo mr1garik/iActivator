@@ -11,10 +11,23 @@
 [![Downloads](https://img.shields.io/github/downloads/mr1garik/iActivator/total?label=downloads&color=0297DE)](https://github.com/mr1garik/iActivator/releases)
 [![MIT license](https://img.shields.io/github/license/mr1garik/iActivator?label=license&color=0297DE)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS-2E3035)
+![Interface languages](https://img.shields.io/badge/UI-EN%20%7C%20UK%20%7C%20RU-0297DE)
+
+**⭐ If it saves you time, a star helps the project grow.**
 
 </div>
 
-Activate an iPhone and skip the Setup Assistant screens, with any language and region. Runs on Windows and macOS. The interface is available in **English and Russian** (Settings → App language).
+Activate and set up an iPhone over USB in one click — activation, language, region, Wi-Fi and skipping the Setup Assistant — with a health check and PDF report. Free, open-source, runs on **Windows and macOS**, with the interface in **English, Ukrainian and Russian** (Settings → App language).
+
+## Features
+
+- 📲 **One-click activation** through Apple's servers over USB — the phone doesn't need Wi-Fi for it
+- 🌐 **Language, region, timezone, 24h** — any locale, applied in one pass
+- ⏭️ **Skips the Setup Assistant** screens (supervised mode, like Apple Configurator)
+- 📶 **Wi-Fi via a profile**, read back from the device to confirm it applied — fixes the usual 3uTools Wi-Fi failures
+- 🩺 **Health check + PDF report** — battery, Find My, MDM, 30-day crash logs, with a clear **Pass / Fail** verdict
+- 🌍 **Trilingual interface** — English, Ukrainian, Russian
+- 🖥️ **Windows & macOS** — free and open-source
 
 **💬 Feedback:** found a problem or have an idea? Open an [Issue](https://github.com/mr1garik/iActivator/issues) — the app is improved based on your feedback.
 
