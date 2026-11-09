@@ -221,8 +221,12 @@ class Handler(BaseHTTPRequestHandler):
                 "lang": i18n.get_lang(),
                 "about": _about(),
             })
+        if self.path == "/api/update/progress":
+            return self._send(200, update.install_progress())
         if self.path.startswith("/api/update"):
-            return self._send(200, update.check(force="force" in self.path))
+            d = update.check(force="force" in self.path)
+            d["can_install"] = update.can_self_update()
+            return self._send(200, d)
         if self.path.startswith("/api/log"):
             entries, total = applog.since(int(self.path.partition("since=")[2] or 0))
             steps = [{**s, "name": t(s["name"]), "detail": t(s["detail"])} for s in STATE.steps]
@@ -308,6 +312,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/update/open":
             update.open_page()
             return self._send(200, {"ok": True})
+        if self.path == "/api/update/install":
+            return self._send(200, update.start_install())
 
         if self.path == "/api/open-data":
             _open_folder(str(core.app_data_dir()))

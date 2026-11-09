@@ -301,7 +301,7 @@
     <div class="card">
       <h2><span class="sp">Проверка на неисправности</span><button id="check"><svg><use href="#i-pulse"/></svg>Проверить</button>
         <button class="report-btn" title="Проверить iPhone и сохранить PDF-отчёт с датой и временем"><svg><use href="#i-file"/></svg>PDF-отчёт</button></h2>
-      <div id="checkResults" class="empty">Батарея, зарядка, Wi-Fi, Bluetooth, модем, память, журналы сбоев за 30 дней, Локатор и MDM. iPhone должен быть разблокирован.</div>
+      <div id="checkResults" class="empty"></div>
     </div>
     <div class="card">
       <h2>Опасная зона</h2>
@@ -430,6 +430,13 @@
       </div>
       <div id="wallets"></div>
     </div>
+    <div class="card">
+      <h2>Смотрите также</h2>
+      <div class="row" style="justify-content:space-between; gap:12px">
+        <span>iOS Panic Reader — моя вторая программа: читает логи паников iPhone по USB и простыми словами говорит, какая деталь виновата и что делать.</span>
+        <button id="panicReader" title="Открыть iOS Panic Reader на GitHub"><svg><use href="#i-pulse"/></svg>iOS Panic Reader</button>
+      </div>
+    </div>
     <p class="hint" style="margin-top:14px">Программа не обходит Блокировку активации: iPhone, привязанный к чужому Apple ID, нужно снять с аккаунта владельца.</p>
   </section>
 </main>
@@ -466,7 +473,11 @@ let logNext = 0, regions = [], networks = [], known = new Set(), wasBusy = false
 // Strings the server sends (step names, check names, journal text, device labels) are also
 // looked up here, so the backend keeps emitting Russian and the page translates for display.
 let LANG = "ru";
-try { const sl = localStorage.getItem("lang"); if (["ru", "en", "uk"].includes(sl)) LANG = sl; } catch {}
+try {
+  const sl = localStorage.getItem("lang");
+  if (["ru", "en", "uk"].includes(sl)) LANG = sl;           // remembered choice
+  else { const nl = (navigator.language || "").toLowerCase(); LANG = nl.startsWith("uk") ? "uk" : nl.startsWith("ru") ? "ru" : "en"; }  // first run: guess from the OS, backend settings confirm it
+} catch {}
 const T_EN = {
   // sidebar / nav
   "Активация": "Activation", "Диагностика": "Diagnostics", "История": "History",
@@ -596,6 +607,11 @@ const T_EN = {
   "Есть новая версия": "A new version is available",
   "кнопка «Скачать» вверху на вкладке «Активация».": "the “Download” button at the top of the Activation tab.",
   "Годен": "Pass", "Не годен": "Fail", "Годен с замечаниями": "Pass with notes",
+  "Скачать и установить": "Download & install", "Загрузка": "Downloading", "Установка…": "Installing…",
+  "Смотрите также": "See also",
+  "Открыть iOS Panic Reader на GitHub": "Open iOS Panic Reader on GitHub",
+  "iOS Panic Reader — моя вторая программа: читает логи паников iPhone по USB и простыми словами говорит, какая деталь виновата и что делать.":
+    "iOS Panic Reader — my other app: it reads an iPhone's panic logs over USB and tells you in plain words which part is faulty and what to do.",
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -714,6 +730,11 @@ const T_UK = {
   "Есть новая версия": "Є нова версія",
   "кнопка «Скачать» вверху на вкладке «Активация».": "кнопка «Завантажити» угорі на вкладці «Активація».",
   "Годен": "Придатний", "Не годен": "Непридатний", "Годен с замечаниями": "Придатний із зауваженнями",
+  "Скачать и установить": "Завантажити та встановити", "Загрузка": "Завантаження", "Установка…": "Встановлення…",
+  "Смотрите также": "Дивіться також",
+  "Открыть iOS Panic Reader на GitHub": "Відкрити iOS Panic Reader на GitHub",
+  "iOS Panic Reader — моя вторая программа: читает логи паников iPhone по USB и простыми словами говорит, какая деталь виновата и что делать.":
+    "iOS Panic Reader — моя друга програма: читає логи паніків iPhone по USB і простими словами каже, яка деталь винна і що робити.",
 };
 function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" ? T_EN : T_UK)[s] ?? s; }
 
@@ -751,14 +772,23 @@ function applyLang(lang) {
   translateStatic();
   refreshDynamic();
 }
-function refreshDynamic() {
+const CHECK_DEFAULT = "Батарея, зарядка, Wi-Fi, Bluetooth, модем, память, журналы сбоев за 30 дней, Локатор и MDM. iPhone должен быть разблокирован.";
+async function refreshDynamic() {
   setConn($("device").value ? $("device").selectedOptions[0]?.textContent : "");
   const st = $("status").textContent.trim();
   if (st === "Готово" || st === "Done") $("status").textContent = T("Готово");
+  try {  // re-fetch so language/region/Wi-Fi-security names in the dropdowns switch language too
+    const meta = await api("/api/meta");
+    fill($("language"), meta.languages, $("language").value);
+    regions = meta.regions;
+    fill($("region"), meta.regions.map(([n, c]) => [n, c]), $("region").value);
+    fill($("security"), meta.security, $("security").value);
+  } catch {}
   fillNets();
   renderLog();
   if (hist && hist.devices) renderHistory();
   if ($("device").value) onDevice(false);
+  else if ($("checkResults").classList.contains("empty")) $("checkResults").textContent = T(CHECK_DEFAULT);
   renderAbout();
   checkUpdate(false);
 }
@@ -795,7 +825,7 @@ function logVisible(e) {
   return !q || e.text.toLowerCase().includes(q) || e.serial.toLowerCase().includes(q);
 }
 function logRow(e) {
-  return `<div class="le ${e.level}"><time>${esc(e.time)}</time>${dot(LOG_DOT[e.level])}<span class="sn">${e.serial ? esc(e.serial) : ""}</span><span class="tx">${esc(e.text)}</span></div>`;
+  return `<div class="le ${e.level}"><time>${esc(e.time)}</time>${dot(LOG_DOT[e.level])}<span class="sn">${e.serial ? esc(e.serial) : ""}</span><span class="tx">${esc(T(e.text))}</span></div>`;
 }
 function renderLog(fresh) {
   const box = $("log");
@@ -969,15 +999,36 @@ async function checkUpdate(force) {
     const u = await api("/api/update" + (force ? "?force=1" : ""));
     if (u && u.available) {
       $("updateBanner").style.display = "";
-      $("updateBanner").innerHTML = `<svg><use href="#i-download"/></svg>`
-        + `<span>${T("Доступна новая версия")} ${esc(u.latest)} (${T("у вас")} ${esc(u.current)}). ${T("История и настройки сохранятся.")}</span>`
-        + `<button id="updGet">${T("Скачать")}</button>`;
-      $("updGet").onclick = () => api("/api/update/open", {});
+      const msg = `${T("Доступна новая версия")} ${esc(u.latest)} (${T("у вас")} ${esc(u.current)}). ${T("История и настройки сохранятся.")}`;
+      if (u.can_install) {
+        $("updateBanner").innerHTML = `<svg><use href="#i-download"/></svg><span>${msg}</span><button id="updInstall">${T("Скачать и установить")}</button>`;
+        $("updInstall").onclick = startUpdateInstall;
+      } else {
+        $("updateBanner").innerHTML = `<svg><use href="#i-download"/></svg><span>${msg}</span><button id="updGet">${T("Скачать")}</button>`;
+        $("updGet").onclick = () => api("/api/update/open", {});
+      }
     } else {
       $("updateBanner").style.display = "none";
     }
     return u;
   } catch (e) { return null; }
+}
+
+async function startUpdateInstall() {
+  const btn = $("updInstall");
+  if (btn) btn.disabled = true;
+  const res = await api("/api/update/install", {});
+  if (res.error) { if (btn) btn.disabled = false; alert(res.error); return; }
+  pollUpdateProgress();
+}
+async function pollUpdateProgress() {
+  let p;
+  try { p = await api("/api/update/progress"); } catch { return; }
+  const btn = $("updInstall");
+  if (p.error) { if (btn) { btn.disabled = false; btn.textContent = T("Скачать и установить"); } alert(p.error); return; }
+  if (btn) btn.textContent = p.done ? T("Установка…") : `${T("Загрузка")}… ${p.pct || 0}%`;
+  if (p.done) return;              // the app will close and relaunch itself
+  if (p.active) setTimeout(pollUpdateProgress, 500);
 }
 
 function updateWifiHint() {
@@ -1078,7 +1129,7 @@ function renderHistory() {
     const key = d.id || d.serial;
     const last = d.events[d.events.length - 1];
     const row = `<tr class="dev-row" data-key="${esc(key)}">
-      <td><b>${esc(d.model_name || d.model || "—")}</b>${d.capacity ? " · " + esc(d.capacity) : ""}<br><small class="empty">iOS ${esc(d.ios || "—")}${d.battery != null ? " · " + T("батарея") + " " + d.battery + "%" : ""}</small></td>
+      <td><b>${esc(T(d.model_name) || d.model || "—")}</b>${d.capacity ? " · " + esc(d.capacity) : ""}<br><small class="empty">iOS ${esc(d.ios || "—")}${d.battery != null ? " · " + T("батарея") + " " + d.battery + "%" : ""}</small></td>
       <td class="mono">${esc(d.serial || d.id)}</td>
       <td class="mono">${esc(d.imei)}${d.imei2 ? "<br>" + esc(d.imei2) : ""}</td>
       <td>${last ? `<div style="display:flex;gap:8px">${dot(RES[last.result])}<div><b>${esc(T(last.action))}</b><br><small class="empty">${esc(last.time)} · ${T("событий")}: ${d.events.length}</small></div></div>` : "—"}</td></tr>`;
@@ -1208,9 +1259,12 @@ async function init() {
   await loadSettings(true);
   updateWifiHint();
   $("uiLang").value = LANG;
-  $("uiLang").onchange = () => { const v = $("uiLang").value; api("/api/settings/ui", { lang: v }); applyLang(v); };
+  $("uiLang").onchange = async () => { const v = $("uiLang").value; await api("/api/settings/ui", { lang: v }); applyLang(v); };
   document.documentElement.lang = LANG;
   if (LANG !== "ru") { translateStatic(); $("status").textContent = T("Готово"); }
+  renderAbout();              // re-render with the final language (settings may differ from the cached one)
+  showSupport(aboutData);
+  $("checkResults").textContent = T(CHECK_DEFAULT);
   checkUpdate(false);
   pollLog();
   loadHistory();
@@ -1226,6 +1280,7 @@ $("check").onclick = runCheck;
 $("start").onclick = start;
 $("status").onclick = () => show("log");
 $("openData").onclick = () => api("/api/open-data", {});
+$("panicReader").onclick = () => api("/api/open-url", { url: "https://github.com/mr1garik/ios-panic-reader" });
 $("checkUpd").onclick = async () => {
   $("updResult").textContent = T("Проверяю…");
   const u = await checkUpdate(true);

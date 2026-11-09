@@ -7,7 +7,12 @@ export_data()/import_data() move all of it to another computer in one JSON file.
 from __future__ import annotations
 
 import base64
+import functools
 import json
+import locale
+import re
+import subprocess
+import sys
 import threading
 from datetime import datetime
 
@@ -15,6 +20,39 @@ import keyring
 
 from . import __version__, history
 from .core import app_data_dir
+
+
+@functools.lru_cache(maxsize=1)
+def system_lang() -> str:
+    """The OS display language mapped to one of our UI languages (ru/uk/en).
+
+    Used as the default on first launch: a Russian system gets Russian, a
+    Ukrainian system Ukrainian, anything else English.
+    """
+    code = ""
+    try:
+        if sys.platform == "darwin":
+            out = subprocess.run(["defaults", "read", "-g", "AppleLanguages"],
+                                 capture_output=True, text=True, timeout=3).stdout
+            m = re.search(r'"([a-zA-Z]{2})', out)
+            code = m.group(1) if m else ""
+        elif sys.platform == "win32":
+            import ctypes
+            lcid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+            code = locale.windows_locale.get(lcid, "")
+    except Exception:
+        pass
+    if not code:
+        try:
+            code = locale.getdefaultlocale()[0] or ""
+        except Exception:
+            code = ""
+    code = code.lower()
+    if code.startswith("uk"):
+        return "uk"
+    if code.startswith("ru"):
+        return "ru"
+    return "en"
 
 SERVICE = "iActivator Wi-Fi"
 THEMES = ("auto", "light", "dark")
@@ -36,7 +74,7 @@ def load() -> dict:
     data.setdefault("last", {})
     data.setdefault("ui", {})
     data["ui"].setdefault("theme", "auto")
-    data["ui"].setdefault("lang", "ru")
+    data["ui"].setdefault("lang", system_lang())
     return data
 
 
