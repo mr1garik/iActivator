@@ -45,6 +45,9 @@ ACTIVATION = {"Activated": "активирован", "Unactivated": "не акт
 
 # Shown on the About page. Wallets: (coin and network, address).
 INSTAGRAM = "https://www.instagram.com/perminov.george"
+PANIC_READER = "https://github.com/mr1garik/ios-panic-reader"
+# Links the About page is allowed to open in the browser via /api/open-url.
+OPEN_URL_ALLOWED = {INSTAGRAM, PANIC_READER}
 WALLETS: list[tuple[str, str]] = [("USDT (TRC20)", "TQKtZpsdz7pm9cuXWPE3ZQEboPHva4Uuas")]
 
 PAGE = (Path(__file__).parent / "page.html").read_text(encoding="utf-8")
@@ -306,7 +309,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, _export_logs(bool(d.get("history", True)), bool(d.get("redact"))))
         if self.path == "/api/open-url":
             url = d.get("url", "")
-            if url == INSTAGRAM:
+            if url in OPEN_URL_ALLOWED:
                 webbrowser.open(url)
             return self._send(200, {"ok": True})
         if self.path == "/api/update/open":
