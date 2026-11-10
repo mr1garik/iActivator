@@ -366,7 +366,7 @@ class Handler(BaseHTTPRequestHandler):
                 _record_checks(serial, "Диагностика", results)
                 path = report.build_pdf(info, results, STATE.steps, lang=i18n.get_lang())
                 history.add_event(serial, "PDF-отчёт", "info", path.name)
-                STATE.log(f"📄 Отчёт сохранён: {path}", serial, "ok")
+                STATE.log(t("📄 Отчёт сохранён: {path}", path=path), serial, "ok")
                 report.open_file(path)
                 return self._send(200, {"path": str(path)})
             except Exception as e:
@@ -395,10 +395,10 @@ class Handler(BaseHTTPRequestHandler):
                 history.update_device(info)
                 if d.get("record"):
                     b = info.get("battery") or {}
-                    detail = (f"{ACTIVATION.get(info.get('activation'), info.get('activation'))}, iOS {info.get('ios')} ({info.get('build')})"
-                              + (f", батарея {b['health']}%" if b.get("health") is not None else ""))
+                    detail = (f"{t(ACTIVATION.get(info.get('activation'), info.get('activation')) or '')}, iOS {info.get('ios')} ({info.get('build')})"
+                              + (t(", батарея {h}%", h=b["health"]) if b.get("health") is not None else ""))
                     history.add_event(serial, "Подключение", "info", detail)
-                    STATE.log(f"Подключён {info.get('model_name')}"
+                    STATE.log(t("Подключён {model}", model=t(info.get("model_name") or "iPhone"))
                               + (f", {info['capacity']}" if info.get("capacity") else "") + f": {detail}", serial)
                     STATE.log(f"IMEI {info.get('imei') or '—'}" + (f", IMEI 2 {info['imei2']}" if info.get("imei2") else ""),
                               serial, "debug")
@@ -427,7 +427,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             return self._send(404, {"error": "not found"})
         if not STATE.run_job(job, serial):
-            return self._send(409, {"error": "Уже выполняется другая операция"})
+            return self._send(409, {"error": t("Уже выполняется другая операция")})
         self._send(200, {"ok": True})
 
 
@@ -449,18 +449,18 @@ def _save_path(name: str):
 
 
 def _export(secrets: bool, with_history: bool) -> dict:
-    path = _save_path(f"iActivator-настройки-{time.strftime('%Y-%m-%d')}.json")
+    path = _save_path(t("iActivator-настройки-{date}.json", date=time.strftime("%Y-%m-%d")))
     if path is None:
         return {"cancelled": True}
     data = settings.export_data(secrets, with_history)
     try:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     except OSError as e:
-        STATE.log(f"❌ Не удалось сохранить настройки: {e}")
-        return {"error": f"Не удалось сохранить файл: {e}"}
+        STATE.log(t("❌ Не удалось сохранить настройки: {e}", e=e))
+        return {"error": t("Не удалось сохранить файл: {e}", e=e)}
     STATE.log(t("✅ Настройки сохранены в файл: {path}", path=path))
-    STATE.log(f"  Сети Wi-Fi: {len(data['networks'])}" + (", с паролями" if secrets else ", без паролей")
-              + (", ключ контролируемого режима" if "supervision_keybag" in data else "")
+    STATE.log(t("  Сети Wi-Fi: {n}", n=len(data["networks"])) + t(", с паролями" if secrets else ", без паролей")
+              + (t(", ключ контролируемого режима") if "supervision_keybag" in data else "")
               + (t(", история: устройств {n}", n=len(data['history'])) if "history" in data else ""))
     if WINDOW is None:
         _open_folder(str(path.parent))
@@ -498,31 +498,32 @@ def _export_logs(with_history: bool, redact: bool = False) -> dict:
     without revealing which devices were processed."""
     if redact:
         with_history = False
-    suffix = "-без-номеров" if redact else ""
-    path = _save_path(f"iActivator-журнал{suffix}-{time.strftime('%Y-%m-%d_%H%M')}.txt")
+    suffix = t("-без-номеров") if redact else ""
+    path = _save_path(t("iActivator-журнал{suffix}-{date}.txt", suffix=suffix, date=time.strftime("%Y-%m-%d_%H%M")))
     if path is None:
         return {"cancelled": True}
     a = _about()
     parts = [
-        "=== iActivator — журнал для диагностики ===",
-        f"Создан: {time.strftime('%Y-%m-%d %H:%M:%S')}",
-        f"Версия: {a['version']}   Система: {a['system']}   Python: {a['python']}   pymobiledevice3: {a['pymobiledevice3']}",
+        t("=== iActivator — журнал для диагностики ==="),
+        t("Создан: {when}", when=time.strftime("%Y-%m-%d %H:%M:%S")),
+        t("Версия: {v}   Система: {sys}   Python: {py}   pymobiledevice3: {pmd}",
+          v=a["version"], sys=a["system"], py=a["python"], pmd=a["pymobiledevice3"]),
     ]
     if redact:
-        parts.append("Серийные номера, IMEI и UDID скрыты (***); история устройств не включена.")
+        parts.append(t("Серийные номера, IMEI и UDID скрыты (***); история устройств не включена."))
     parts.append("")
     logs = sorted(applog.logs_dir().glob("*.log"))
     if logs:
-        parts.append(f"=== ЗАПИСИ ЖУРНАЛА (файлов: {len(logs)}) ===")
+        parts.append(t("=== ЗАПИСИ ЖУРНАЛА (файлов: {n}) ===", n=len(logs)))
         for p in logs:
             try:
                 parts.append(f"\n----- {p.name} -----\n" + p.read_text(encoding="utf-8").rstrip())
             except OSError as e:
-                parts.append(f"\n----- {p.name} ----- (не удалось прочитать: {e})")
+                parts.append(f"\n----- {p.name} ----- " + t("(не удалось прочитать: {e})", e=e))
     else:
-        parts.append("=== ЗАПИСЕЙ ЖУРНАЛА ПОКА НЕТ ===")
+        parts.append(t("=== ЗАПИСЕЙ ЖУРНАЛА ПОКА НЕТ ==="))
     if with_history:
-        parts.append("\n\n=== ИСТОРИЯ УСТРОЙСТВ (JSON) ===")
+        parts.append("\n\n" + t("=== ИСТОРИЯ УСТРОЙСТВ (JSON) ==="))
         parts.append(json.dumps(history.export(), ensure_ascii=False, indent=1))
     text = "\n".join(parts) + "\n"
     if redact:
@@ -530,9 +531,9 @@ def _export_logs(with_history: bool, redact: bool = False) -> dict:
     try:
         path.write_text(text, encoding="utf-8")
     except OSError as e:
-        STATE.log(f"❌ Не удалось сохранить журнал: {e}")
-        return {"error": f"Не удалось сохранить файл: {e}"}
-    STATE.log(f"✅ Журнал сохранён в файл: {path}")
+        STATE.log(t("❌ Не удалось сохранить журнал: {e}", e=e))
+        return {"error": t("Не удалось сохранить файл: {e}", e=e)}
+    STATE.log(t("✅ Журнал сохранён в файл: {path}", path=path))
     if WINDOW is None:
         _open_folder(str(path.parent))
     return {"path": str(path)}
@@ -596,7 +597,8 @@ def main():
 
     applog.cleanup()
     i18n.set_lang(settings.load()["ui"].get("lang", "ru"))
-    STATE.log(f"iActivator {__version__} запущен · {platform.system()} {platform.release()} · Python {platform.python_version()}",
+    STATE.log(t("iActivator {v} запущен · {sys} · Python {py}", v=__version__,
+                sys=f"{platform.system()} {platform.release()}", py=platform.python_version()),
               level="debug")
 
     if webview is not None:

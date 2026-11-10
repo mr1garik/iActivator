@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from .i18n import t
+
 IPHONES = {
     "iPhone3,1": "iPhone 4", "iPhone3,2": "iPhone 4", "iPhone3,3": "iPhone 4",
     "iPhone4,1": "iPhone 4S",
@@ -41,4 +43,4 @@ def capacity_label(total_bytes: Optional[int]) -> Optional[str]:
         return None
     gb = total_bytes / 1e9
     size = next((s for s in _SIZES_GB if gb <= s * 1.02), round(gb))
-    return f"{size // 1024} ТБ" if size >= 1024 else f"{size} ГБ"
+    return t("{n} ТБ", n=size // 1024) if size >= 1024 else t("{n} ГБ", n=size)

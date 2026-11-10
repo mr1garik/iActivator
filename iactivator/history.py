@@ -11,6 +11,7 @@ import threading
 from datetime import datetime
 
 from .core import app_data_dir
+from .i18n import t as tr
 
 _lock = threading.Lock()
 RESULT = {"ok": "Успешно", "warn": "Замечания", "error": "Ошибка", "info": ""}
@@ -84,11 +85,11 @@ def _write_csv(data: dict) -> None:
     try:
         with open(csv_path(), "w", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f, delimiter=";")
-            w.writerow(["Дата и время", "Серийный №", "IMEI", "IMEI 2", "Модель", "Память", "iOS", "Действие", "Результат", "Подробности"])
+            w.writerow([tr(h) for h in ("Дата и время", "Серийный №", "IMEI", "IMEI 2", "Модель", "Память", "iOS", "Действие", "Результат", "Подробности")])
             rows = [(e, d) for d in data.values() for e in d.get("events", [])]
             for e, d in sorted(rows, key=lambda r: r[0]["time"]):
-                w.writerow([e["time"], d.get("serial") or d.get("id") or "", d.get("imei") or "", d.get("imei2") or "", d.get("model_name") or d.get("model") or "",
-                            d.get("capacity") or "", d.get("ios") or "", e["action"], RESULT.get(e["result"], e["result"]), e.get("detail", "")])
+                w.writerow([e["time"], d.get("serial") or d.get("id") or "", d.get("imei") or "", d.get("imei2") or "", tr(d.get("model_name") or d.get("model") or ""),
+                            d.get("capacity") or "", d.get("ios") or "", tr(e["action"]), tr(RESULT.get(e["result"], e["result"])), e.get("detail", "")])
     except OSError:
         pass  # the file is open in Excel; it will be rewritten on the next change
 

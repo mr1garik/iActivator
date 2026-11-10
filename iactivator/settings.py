@@ -20,6 +20,7 @@ import keyring
 
 from . import __version__, history
 from .core import app_data_dir
+from .i18n import t
 
 
 @functools.lru_cache(maxsize=1)
@@ -171,32 +172,32 @@ def export_data(secrets: bool, include_history: bool) -> dict:
 def import_data(src: dict) -> list[str]:
     """Merge an exported file into this computer's settings; returns what was done, for the journal."""
     if not isinstance(src, dict) or src.get("kind") != EXPORT_KIND:
-        raise ValueError("Это не файл настроек iActivator")
+        raise ValueError(t("Это не файл настроек iActivator"))
     done = []
     nets = [n for n in src.get("networks", []) if isinstance(n, dict) and str(n.get("ssid", "")).strip()]
     for n in reversed(nets):  # save_network puts each at the top; keep the file's order
         save_network(n["ssid"], n.get("password", ""), n.get("security", "Any"), bool(n.get("hidden")), bool(n.get("nomac", True)))
     if nets:
         with_pass = sum(1 for n in nets if n.get("password"))
-        done.append(f"Сети Wi-Fi: {len(nets)}" + (f" (с паролями: {with_pass})" if with_pass else " (без паролей)"))
+        done.append(t("Сети Wi-Fi: {n}", n=len(nets)) + (t(" (с паролями: {n})", n=with_pass) if with_pass else t(" (без паролей)")))
     with _lock:
         data = load()
         if isinstance(src.get("last"), dict):
             data["last"] = src["last"]
-            done.append("Язык, регион и режимы")
+            done.append(t("Язык, регион и режимы"))
         if isinstance(src.get("ui"), dict) and src["ui"].get("theme") in THEMES:
             data["ui"]["theme"] = src["ui"]["theme"]
         if isinstance(src.get("ui"), dict) and src["ui"].get("lang") in LANGS:
             data["ui"]["lang"] = src["ui"]["lang"]
-            done.append("Тема оформления")
+            done.append(t("Тема оформления"))
         _save(data)
     if src.get("supervision_keybag"):
         key = base64.b64decode(src["supervision_keybag"])
         if not _keybag().exists():
             _keybag().write_bytes(key)
-            done.append("Ключ контролируемого режима")
+            done.append(t("Ключ контролируемого режима"))
         elif _keybag().read_bytes() != key:
-            done.append("⚠ Ключ контролируемого режима не заменён: на этом компьютере уже есть свой")
+            done.append(t("⚠ Ключ контролируемого режима не заменён: на этом компьютере уже есть свой"))
     if isinstance(src.get("history"), dict):
-        done.append(f"История: устройств {history.merge(src['history'])}")
+        done.append(t("История: устройств {n}", n=history.merge(src["history"])))
     return done

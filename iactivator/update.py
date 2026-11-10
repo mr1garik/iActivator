@@ -76,7 +76,7 @@ def check(force: bool = False) -> dict:
     except Exception as e:
         info["error"] = True  # offline, no releases yet, or TLS/cert trouble
         try:
-            applog.add(f"Проверка обновлений не удалась: {type(e).__name__}: {e}", level="debug")
+            applog.add(t("Проверка обновлений не удалась: {kind}: {e}", kind=type(e).__name__, e=e), level="debug")
         except Exception:
             pass
     with _lock:

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from .i18n import t
+from .i18n import t as tr  # alias for functions that use a local named "t"
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -131,7 +132,7 @@ class DeviceInfo:
 
     def label(self) -> str:
         state = t(ACTIVATION_RU.get(self.activation_state, self.activation_state))
-        return f"{model_name(self.product_type)} · iOS {self.ios} · {state} · {self.serial}"
+        return f"{t(model_name(self.product_type))} · iOS {self.ios} · {state} · {self.serial}"
 
 
 ACTIVATION_RU = {"Activated": "активирован", "Unactivated": "не активирован"}
@@ -272,8 +273,9 @@ PANIC_HINTS = [
 ]
 
 
-def _check(name, status, detail):
-    return {"name": t(name), "status": status, "detail": t(detail)}
+def _check(name, status, detail, **kw):
+    """detail is a Russian template; values go in as keywords so it can be translated."""
+    return {"name": t(name), "status": status, "detail": t(detail, **kw)}
 
 
 async def _panic_checks(lockdown, days: int = 30) -> list[dict]:
@@ -298,7 +300,7 @@ async def _panic_checks(lockdown, days: int = 30) -> list[dict]:
                 recent.append((when, f))
         recent.sort(reverse=True)
         if not recent:
-            return [_check("Перезагрузки (panic)", "ok", f"Сбоев за {days} дней нет")]
+            return [_check("Перезагрузки (panic)", "ok", "Сбоев за {days} дней нет", days=days)]
 
         reasons: dict[str, int] = {}
         for _, f in recent[:10]:
@@ -314,12 +316,13 @@ async def _panic_checks(lockdown, days: int = 30) -> list[dict]:
             low = panic.lower()
             hint = next((h for key, h in PANIC_HINTS if key in low), None)
             if hint is None:
-                hint = "Прочее: " + panic.strip().splitlines()[0][:120] if panic.strip() else "Неизвестная причина"
+                hint = t("Прочее: ") + panic.strip().splitlines()[0][:120] if panic.strip() else "Неизвестная причина"
             reasons[hint] = reasons.get(hint, 0) + 1
 
     status = "bad" if len(recent) >= 3 else "warn"
-    detail = f"{len(recent)} сбоев за {days} дней (последний {recent[0][0]:%d.%m.%Y %H:%M}). " + "; ".join(
-        f"{h} ×{n}" for h, n in sorted(reasons.items(), key=lambda x: -x[1]))
+    detail = t("{n} сбоев за {days} дней (последний {last}). ", n=len(recent), days=days,
+               last=f"{recent[0][0]:%d.%m.%Y %H:%M}") + "; ".join(
+        f"{t(h)} ×{n}" for h, n in sorted(reasons.items(), key=lambda x: -x[1]))
     return [_check("Перезагрузки (panic)", status, detail)]
 
 
@@ -400,7 +403,7 @@ async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activati
                 results.append(_check("Локатор (блокировка активации)", "warn", "Сервер Apple не дал однозначного ответа"))
         except Exception as e:
             results.append(_check("Локатор (блокировка активации)", "warn",
-                                  f"Не удалось проверить (нужен интернет): {short_error(e)}"))
+                                  "Не удалось проверить (нужен интернет): {e}", e=short_error(e)))
     else:
         results.append(_check("Локатор (блокировка активации)", "info",
                               "Устройство уже активировано — по USB статус не узнать. "
@@ -412,7 +415,7 @@ async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activati
             cc = await mc.get_cloud_configuration() or {}
             profiles = await mc.get_profile_list()
     except Exception as e:
-        results.append(_check("MDM (удалённое управление)", "warn", f"Не удалось прочитать: {short_error(e)}"))
+        results.append(_check("MDM (удалённое управление)", "warn", "Не удалось прочитать: {e}", e=short_error(e)))
         return results
 
     ours = own_cert is not None and own_cert in cc.get("SupervisorHostCertificates", [])
@@ -421,13 +424,13 @@ async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activati
         results.append(_check("MDM (удалённое управление)", "ok", "Под контролем этого компьютера (iActivator)"))
     elif cc.get("IsMDMUnremovable") or cc.get("ConfigurationURL"):
         results.append(_check("MDM (удалённое управление)", "bad",
-                              f"Устройство в корпоративной программе (Apple Business Manager): {org or 'организация неизвестна'}. "
-                              "Удалить может только владелец организации"))
+                              "Устройство в корпоративной программе (Apple Business Manager): {org}. "
+                              "Удалить может только владелец организации", org=org or t("организация неизвестна")))
     elif not cc.get("IsSupervised") and cc.get("ConfigurationSource") == 2 and cc.get("SkipSetup"):
         results.append(_check("MDM (удалённое управление)", "ok", "Не управляется (только пропуск экранов настройки)"))
     elif cc.get("IsSupervised") or org:
         results.append(_check("MDM (удалённое управление)", "warn",
-                              f"Контролируемый режим: {org or 'неизвестная организация'} (снимается стиранием)"))
+                              "Контролируемый режим: {org} (снимается стиранием)", org=org or t("неизвестная организация")))
     else:
         results.append(_check("MDM (удалённое управление)", "ok", "Не управляется"))
 
@@ -435,9 +438,9 @@ async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activati
     foreign = {pid: m for pid, m in meta.items() if not pid.startswith("com.iactivator.")}
     locked_profiles = [m.get("PayloadDisplayName", pid) for pid, m in foreign.items() if m.get("PayloadRemovalDisallowed")]
     if locked_profiles:
-        results.append(_check("Профили", "bad", "Неудаляемые профили: " + ", ".join(locked_profiles)))
+        results.append(_check("Профили", "bad", t("Неудаляемые профили: ") + ", ".join(locked_profiles)))
     elif foreign:
-        results.append(_check("Профили", "warn", "Установлены профили: " +
+        results.append(_check("Профили", "warn", t("Установлены профили: ") +
                               ", ".join(m.get("PayloadDisplayName", pid) for pid, m in foreign.items())))
 
     try:
@@ -475,7 +478,7 @@ async def run_health_check(serial: str, check_activation: bool = True) -> list[d
                 raw = await diag.get_battery()
             battery = _battery_info(raw or {}) | {"external": bool((raw or {}).get("ExternalConnected"))}
         except Exception as e:
-            results.append(_check("Батарея", "warn", f"Нет доступа к диагностике (разблокируйте iPhone): {short_error(e)}"))
+            results.append(_check("Батарея", "warn", "Нет доступа к диагностике (разблокируйте iPhone): {e}", e=short_error(e)))
         if battery:
             h, cyc = battery.get("health"), battery.get("cycles")
             if h is None:
@@ -483,18 +486,19 @@ async def run_health_check(serial: str, check_activation: bool = True) -> list[d
             else:
                 st = "ok" if h >= 85 else "warn" if h >= 80 else "bad"
                 note = {"ok": "в норме", "warn": "износ заметен", "bad": "рекомендуется замена"}[st]
-                results.append(_check("Ёмкость батареи", st, f"{h}% ({battery['full_mah']} из {battery['design_mah']} мАч) — {note}"))
+                results.append(_check("Ёмкость батареи", st, "{h}% ({full} из {design} мАч) — {note}",
+                                      h=h, full=battery["full_mah"], design=battery["design_mah"], note=tr(note)))
             if cyc is not None:
                 st = "ok" if cyc < 500 else "warn" if cyc < 1000 else "bad"
                 results.append(_check("Циклы зарядки", st, str(cyc)))
-            t = battery.get("temperature")
-            if t is not None:
-                st = "ok" if t < 40 else "warn" if t < 45 else "bad"
-                results.append(_check("Температура батареи", st, f"{t} °C"))
+            temp = battery.get("temperature")
+            if temp is not None:
+                st = "ok" if temp < 40 else "warn" if temp < 45 else "bad"
+                results.append(_check("Температура батареи", st, f"{temp} °C"))
             level = battery.get("level")
             if battery["external"] and not battery["charging"] and level is not None and level < 80:
                 results.append(_check("Зарядка", "warn",
-                                      f"Кабель подключён, но заряд ({level}%) не идёт — проверьте кабель, порт или контроллер зарядки"))
+                                      "Кабель подключён, но заряд ({level}%) не идёт — проверьте кабель, порт или контроллер зарядки", level=level))
 
         # Radios: an empty address / missing modem firmware usually means a chip that did not start
         for key, name in (("WiFiAddress", "Wi-Fi модуль"), ("BluetoothAddress", "Bluetooth")):
@@ -507,7 +511,7 @@ async def run_health_check(serial: str, check_activation: bool = True) -> list[d
             elif not v.get("InternationalMobileEquipmentIdentity"):
                 results.append(_check("Модем", "bad", "IMEI не читается"))
             else:
-                results.append(_check("Модем", "ok", f"прошивка {v.get('BasebandVersion')}"))
+                results.append(_check("Модем", "ok", "прошивка {fw}", fw=v.get("BasebandVersion")))
 
         # Storage
         try:
@@ -516,7 +520,8 @@ async def run_health_check(serial: str, check_activation: bool = True) -> list[d
             if total and free is not None:
                 pct = free * 100 / total
                 st = "ok" if pct >= 10 else "warn" if pct >= 3 else "bad"
-                results.append(_check("Память", st, f"свободно {free / 1e9:.1f} из {total / 1e9:.0f} ГБ ({pct:.0f}%)"))
+                results.append(_check("Память", st, "свободно {free} из {total} ГБ ({pct}%)",
+                                      free=f"{free / 1e9:.1f}", total=f"{total / 1e9:.0f}", pct=f"{pct:.0f}"))
         except Exception:
             pass
 
@@ -524,7 +529,7 @@ async def run_health_check(serial: str, check_activation: bool = True) -> list[d
         try:
             results.extend(await _panic_checks(lockdown))
         except Exception as e:
-            results.append(_check("Перезагрузки (panic)", "warn", f"Не удалось прочитать журналы: {short_error(e)}"))
+            results.append(_check("Перезагрузки (panic)", "warn", "Не удалось прочитать журналы: {e}", e=short_error(e)))
 
         results = await lock_checks(lockdown, _own_cert(), check_activation) + results
         return results
