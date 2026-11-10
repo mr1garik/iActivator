@@ -612,6 +612,21 @@ const T_EN = {
   "Открыть iOS Panic Reader на GitHub": "Open iOS Panic Reader on GitHub",
   "iOS Panic Reader — моя вторая программа: читает логи паников iPhone по USB и простыми словами говорит, какая деталь виновата и что делать.":
     "iOS Panic Reader — my other app: it reads an iPhone's panic logs over USB and tells you in plain words which part is faulty and what to do.",
+  // actions and leftovers shown in History / Diagnostics
+  "Подключение": "Connection",
+  "Локатор и MDM": "Find My & MDM",
+  "Стирание": "Erase",
+  "Чтение данных": "Reading data",
+  "Языки устройства": "Device languages",
+  "Настройка": "Setup",
+  "Без замечаний": "No issues",
+  "iPhone SE (1-го поколения)": "iPhone SE (1st generation)",
+  "iPhone SE (2-го поколения)": "iPhone SE (2nd generation)",
+  "iPhone SE (3-го поколения)": "iPhone SE (3rd generation)",
+  "Скопировать адрес": "Copy address",
+  "Не удалось прочитать": "Could not read",
+  "мАч": "mAh",
+  "Локатор/MDM": "Find My/MDM",
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -735,7 +750,25 @@ const T_UK = {
   "Открыть iOS Panic Reader на GitHub": "Відкрити iOS Panic Reader на GitHub",
   "iOS Panic Reader — моя вторая программа: читает логи паников iPhone по USB и простыми словами говорит, какая деталь виновата и что делать.":
     "iOS Panic Reader — моя друга програма: читає логи паніків iPhone по USB і простими словами каже, яка деталь винна і що робити.",
+  // actions and leftovers shown in History / Diagnostics
+  "Подключение": "Підключення",
+  "Локатор и MDM": "Локатор і MDM",
+  "Стирание": "Стирання",
+  "Чтение данных": "Читання даних",
+  "Языки устройства": "Мови пристрою",
+  "Настройка": "Налаштування",
+  "Без замечаний": "Без зауважень",
+  "iPhone SE (1-го поколения)": "iPhone SE (1-го покоління)",
+  "iPhone SE (2-го поколения)": "iPhone SE (2-го покоління)",
+  "iPhone SE (3-го поколения)": "iPhone SE (3-го покоління)",
+  "Скопировать адрес": "Скопіювати адресу",
+  "Не удалось прочитать": "Не вдалося прочитати",
+  "мАч": "мАг",
+  "Локатор/MDM": "Локатор/MDM",
+  "Английский (English)": "Англійська (English)",
 };
+// Sizes stored by an earlier (Russian) run: show them in the current language.
+function cap(s) { return LANG === "en" && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
 function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" ? T_EN : T_UK)[s] ?? s; }
 
 // Translate the static shell. Dynamic containers are rendered through T() in JS, so skip them here.
@@ -919,7 +952,7 @@ async function loadInfo(record) {
   info = d;
   const act = d.activation === "Activated" ? `<span class="good">${T("Активирован")}</span>`
             : d.activation === "Unactivated" ? `<span class="warn">${T("Не активирован")}</span>` : esc(d.activation);
-  const items = [["Модель", esc(d.model_name + (d.capacity ? ", " + d.capacity : ""))], ["iOS", esc(d.ios && `${d.ios} (${d.build})`)], ["Серийный №", esc(d.serial)],
+  const items = [["Модель", esc(T(d.model_name) + (d.capacity ? ", " + cap(d.capacity) : ""))], ["iOS", esc(d.ios && `${d.ios} (${d.build})`)], ["Серийный №", esc(d.serial)],
                  ["IMEI", esc(d.imei)], ["Активация", act]];
   if (d.imei2) items.splice(4, 0, ["IMEI 2", esc(d.imei2)]);
   const b = d.battery;
@@ -1129,7 +1162,7 @@ function renderHistory() {
     const key = d.id || d.serial;
     const last = d.events[d.events.length - 1];
     const row = `<tr class="dev-row" data-key="${esc(key)}">
-      <td><b>${esc(T(d.model_name) || d.model || "—")}</b>${d.capacity ? " · " + esc(d.capacity) : ""}<br><small class="empty">iOS ${esc(d.ios || "—")}${d.battery != null ? " · " + T("батарея") + " " + d.battery + "%" : ""}</small></td>
+      <td><b>${esc(T(d.model_name) || d.model || "—")}</b>${d.capacity ? " · " + esc(cap(d.capacity)) : ""}<br><small class="empty">iOS ${esc(d.ios || "—")}${d.battery != null ? " · " + T("батарея") + " " + d.battery + "%" : ""}</small></td>
       <td class="mono">${esc(d.serial || d.id)}</td>
       <td class="mono">${esc(d.imei)}${d.imei2 ? "<br>" + esc(d.imei2) : ""}</td>
       <td>${last ? `<div style="display:flex;gap:8px">${dot(RES[last.result])}<div><b>${esc(T(last.action))}</b><br><small class="empty">${esc(last.time)} · ${T("событий")}: ${d.events.length}</small></div></div>` : "—"}</td></tr>`;
@@ -1157,7 +1190,7 @@ document.querySelectorAll(".report-btn").forEach(b => b.onclick = makeReport);
 $("histBody").onclick = async e => {
   const del = e.target.closest("[data-del]");
   if (del) {
-    if (!confirm(LANG === "en" ? `Delete device ${del.dataset.del} from history?` : `Удалить устройство ${del.dataset.del} из истории?`)) return;
+    if (!confirm(LANG === "en" ? `Delete device ${del.dataset.del} from history?` : LANG === "uk" ? `Видалити пристрій ${del.dataset.del} з історії?` : `Удалить устройство ${del.dataset.del} из истории?`)) return;
     await api("/api/history/delete", { serial: del.dataset.del });
     openRow = null; return loadHistory();
   }
@@ -1220,7 +1253,7 @@ function showSupport(a) {
   $("insta").onclick = () => api("/api/open-url", { url: a.instagram });
   $("wallets").innerHTML = a.wallets.length ? `<p class="hint">${T("Поддержать проект криптовалютой:")}</p>` + a.wallets.map(([name, addr], i) =>
     `<div class="wallet"><b>${esc(name)}</b><code title="${esc(addr)}">${esc(addr)}</code>
-     <button class="icon" data-wallet="${i}" title="Скопировать адрес"><svg><use href="#i-copy"/></svg></button></div>`).join("") : "";
+     <button class="icon" data-wallet="${i}" title="${T("Скопировать адрес")}"><svg><use href="#i-copy"/></svg></button></div>`).join("") : "";
   $("wallets").onclick = e => {
     const b = e.target.closest("[data-wallet]");
     if (b) copyText(a.wallets[b.dataset.wallet][1], `${T("Адрес")} ${a.wallets[b.dataset.wallet][0]} ${T("скопирован")}`);
@@ -1230,7 +1263,7 @@ function showSupport(a) {
 function renderAbout() {
   if (!aboutData) return;
   const a = aboutData;
-  $("ver").textContent = (LANG === "en" ? "version " : "версия ") + a.version;
+  $("ver").textContent = (LANG === "en" ? "version " : LANG === "uk" ? "версія " : "версия ") + a.version;
   $("aboutVer").textContent = LANG === "en" ? "Version " + a.version + " · iPhone activation & setup"
                                             : "Версия " + a.version + " · активация и настройка iPhone";
   $("aboutInfo").innerHTML = [["Версия", a.version], ["Система", a.system], ["Python", a.python],

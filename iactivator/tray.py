@@ -10,6 +10,7 @@ import platform
 import threading
 
 from . import __version__
+from .i18n import t
 
 _IS_WIN = platform.system() == "Windows"
 _quitting = threading.Event()
@@ -38,8 +39,8 @@ def start_windows_tray(window):
     _icon = pystray.Icon(
         "iActivator", _tray_image(), f"iActivator {__version__}",
         menu=pystray.Menu(
-            pystray.MenuItem("Показать окно", lambda icon, item: _show(window), default=True),
-            pystray.MenuItem("Выход", lambda icon, item: _quit(window)),
+            pystray.MenuItem(t("Показать окно"), lambda icon, item: _show(window), default=True),
+            pystray.MenuItem(t("Выход"), lambda icon, item: _quit(window)),
         ),
     )
     threading.Thread(target=_icon.run, daemon=True).start()
@@ -66,8 +67,8 @@ def mac_menu(window):
     from webview.menu import Menu, MenuAction, MenuSeparator
     return [
         Menu("iActivator", [
-            MenuAction("Показать окно", lambda: _show(window)),
+            MenuAction(t("Показать окно"), lambda: _show(window)),
             MenuSeparator(),
-            MenuAction("Выход", window.destroy),
+            MenuAction(t("Выход"), window.destroy),
         ]),
     ]
