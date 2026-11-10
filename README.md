@@ -82,6 +82,7 @@ The **Activation** tab — connect the iPhone, pick language/region, choose the 
 |---|---|
 | **iPhone models** | iPhone 5s and newer (anything that runs iOS 12+). iPads activate too, but the interface is designed for iPhone. |
 | **iOS versions** | iOS 12–18. Screen skipping and the Wi-Fi profile work on iOS 13+; on older versions activation still goes through, but some settings may not apply. |
+| **iPhone 4 / 4S (iOS 7–9)** | Experimental: activated through the legacy lockdown path. A SIM card is usually required; skipping setup screens may not be available. Not yet verified on real devices — feedback is welcome. |
 | **Windows** | Windows 10 and 11. Needs the Apple driver: "Apple Devices" from the Microsoft Store or iTunes. Has a tray icon and auto-start. |
 | **macOS** | macOS 11 Big Sur and newer (Intel and Apple Silicon). No drivers needed. Controls live in the menu bar. |
 | **Activation Lock (iCloud)** | Not bypassed. An iPhone tied to someone else's Apple ID must be removed from the owner's account. |

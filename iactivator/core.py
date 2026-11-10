@@ -323,6 +323,36 @@ async def _panic_checks(lockdown, days: int = 30) -> list[dict]:
     return [_check("Перезагрузки (panic)", status, detail)]
 
 
+def ios_major(version: Optional[str]) -> int:
+    """Major iOS version from ProductVersion ("7.1.2" -> 7); 0 when unknown."""
+    try:
+        return int(str(version).split(".")[0])
+    except (TypeError, ValueError):
+        return 0
+
+
+# com.apple.mobileactivationd (session activation) exists since iOS 10. Older devices
+# (iPhone 4 on iOS 7, 4S on iOS 9...) are activated through lockdownd directly.
+LEGACY_ACTIVATION_BELOW_IOS = 10
+
+
+def extract_activation_record(content: bytes) -> Optional[dict]:
+    """Pull the activation record out of Apple's reply to a legacy (pre-iOS 10) request.
+    The reply is a plist, sometimes embedded in an HTML page. Returns None when the
+    server sent no record (e.g. it wants a SIM card or refused the device)."""
+    import re
+    m = re.search(rb"<plist.*?</plist>", content, re.DOTALL)
+    try:
+        reply = plistlib.loads(m.group(0) if m else content)
+    except Exception:
+        return None
+    if not isinstance(reply, dict):
+        return None
+    node = reply.get("iphone-activation") or reply.get("device-activation") or {}
+    record = node.get("activation-record") if isinstance(node, dict) else None
+    return record if isinstance(record, dict) and record else None
+
+
 async def _activation_lock_status(lockdown) -> Optional[bool]:
     """Ask Apple's activation server, the same way the iPhone does during setup,
     whether the device is locked to an Apple ID. Nothing is applied to the device.
@@ -601,7 +631,22 @@ class Activator:
         self.step(STEP_LANG, "ok")
 
         keybag = keybag_path(opts.organization) if opts.skip_setup and opts.supervise else None
-        if opts.skip_setup:
+        legacy = 0 < ios_major(v.get("ProductVersion")) < LEGACY_ACTIVATION_BELOW_IOS
+        if opts.skip_setup and legacy:
+            # Old iOS may not accept the skip-setup configuration; activation already
+            # succeeded, so report it and carry on instead of failing the whole run.
+            self.step(STEP_SKIP, "run")
+            try:
+                await self.apply_cloud_configuration(opts, keybag)
+                self.step(STEP_SKIP, "ok")
+            except UserFacingError:
+                raise
+            except Exception as e:
+                self.log(t("⚠ Старая iOS не приняла пропуск экранов ({e}) — пройдите их на iPhone вручную.",
+                           e=short_error(e)))
+                self.step(STEP_SKIP, "warn", "не поддерживается этой версией iOS")
+                await self.connect()
+        elif opts.skip_setup:
             self.step(STEP_SKIP, "run")
             await self.apply_cloud_configuration(opts, keybag)
             self.step(STEP_SKIP, "ok")
@@ -656,7 +701,10 @@ class Activator:
             return
         self.log("Активация через серверы Apple (интернет компьютера)…")
         try:
-            await service.activate(skip_apple_id_query=True)
+            if 0 < ios_major(self.lockdown.all_values.get("ProductVersion")) < LEGACY_ACTIVATION_BELOW_IOS:
+                await self._activate_legacy()
+            else:
+                await service.activate(skip_apple_id_query=True)
         except MobileActivationException as e:
             if "iCloud" in str(e) or "Activation Lock" in str(e):
                 raise UserFacingError(t(
@@ -675,6 +723,48 @@ class Activator:
             raise
         self.log("Устройство активировано.")
         await self.connect()
+
+    async def _activate_legacy(self) -> None:
+        """Activation for iOS older than 10 (iPhone 4 / 4S era): no mobileactivationd, so
+        the activation info is read from lockdownd, sent to Apple, and the returned
+        record is written back with the lockdown "Activate" request."""
+        v = self.lockdown.all_values
+        self.log(t("Старая iOS ({pv}): активация через lockdown (без сессии).", pv=v.get("ProductVersion")))
+        try:
+            info = await self.lockdown.get_value(key="ActivationInfo")
+        except Exception as e:
+            raise UserFacingError(t(
+                "iPhone не выдал данные для активации: {e}. Разблокируйте экран, проверьте кабель "
+                "и что в телефон вставлена SIM-карта, затем повторите.", e=short_error(e))) from e
+        request: dict = {
+            "InStoreActivation": False,
+            "AppleSerialNumber": v.get("SerialNumber"),
+            "activation-info": plistlib.dumps(info),
+        }
+        for field_name, key in (("IMEI", "InternationalMobileEquipmentIdentity"),
+                                ("MEID", "MobileEquipmentIdentifier"),
+                                ("IMSI", "InternationalMobileSubscriberIdentity"),
+                                ("ICCID", "IntegratedCircuitCardIdentity")):
+            if v.get(key) is not None:
+                request[field_name] = v[key]
+        no_sim = bool(v.get("TelephonyCapability")) and "ICCID" not in request
+        if no_sim:
+            self.log("  ⚠ SIM-карта не обнаружена. Старые iPhone обычно не активируются без SIM.")
+
+        service = MobileActivationService(self.lockdown)
+        content, headers = await asyncio.to_thread(service.post, ACTIVATION_URL, request)
+        if "buddyml" in headers.get("Content-Type", ""):
+            raise MobileActivationException("The device is iCloud locked (Activation Lock).")
+        record = extract_activation_record(content)
+        if record is None:
+            raise UserFacingError(t(
+                "Сервер Apple не выдал запись активации для этого устройства.") + (" " + t(
+                "Вставьте рабочую SIM-карту и повторите.") if no_sim else ""))
+        await self.lockdown._request("Activate", {"ActivationRecord": record})
+        try:
+            await self.lockdown.set_value(True, key="ActivationStateAcknowledged")
+        except Exception:
+            pass  # not present on every old iOS; the device is activated either way
 
     async def _now_activated(self) -> bool:
         """Reconnect and report whether the device is already activated."""
