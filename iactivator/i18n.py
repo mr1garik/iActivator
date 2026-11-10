@@ -257,6 +257,21 @@ EN: dict[str, str] = {
     "Загружаю обновление…": "Downloading the update…",
     "Устанавливаю обновление и перезапускаю…": "Installing the update and restarting…",
     "Не удалось найти установленную программу для замены.": "Couldn't find the installed app to replace.",
+    # ---- legacy activation (iOS < 10) ----
+    "Старая iOS ({pv}): активация через lockdown (без сессии).":
+        "Old iOS ({pv}): activating through lockdown (no session).",
+    "iPhone не выдал данные для активации: {e}. Разблокируйте экран, проверьте кабель и что в телефон вставлена SIM-карта, затем повторите.":
+        "The iPhone did not provide its activation data: {e}. Unlock the screen, check the cable and that a SIM card is inserted, then try again.",
+    "  ⚠ SIM-карта не обнаружена. Старые iPhone обычно не активируются без SIM.":
+        "  ⚠ No SIM card detected. Old iPhones usually cannot be activated without a SIM.",
+    "Сервер Apple не выдал запись активации для этого устройства.":
+        "Apple's server did not return an activation record for this device.",
+    "Вставьте рабочую SIM-карту и повторите.":
+        "Insert a working SIM card and try again.",
+    "⚠ Старая iOS не приняла пропуск экранов ({e}) — пройдите их на iPhone вручную.":
+        "⚠ This old iOS did not accept skipping the setup screens ({e}) — go through them on the iPhone manually.",
+    "не поддерживается этой версией iOS":
+        "not supported by this iOS version",
 }
 
 # Russian source -> Ukrainian.
@@ -474,4 +489,19 @@ UK: dict[str, str] = {
     "Загружаю обновление…": "Завантажую оновлення…",
     "Устанавливаю обновление и перезапускаю…": "Встановлюю оновлення та перезапускаю…",
     "Не удалось найти установленную программу для замены.": "Не вдалося знайти встановлену програму для заміни.",
+    # ---- legacy activation (iOS < 10) ----
+    "Старая iOS ({pv}): активация через lockdown (без сессии).":
+        "Стара iOS ({pv}): активація через lockdown (без сесії).",
+    "iPhone не выдал данные для активации: {e}. Разблокируйте экран, проверьте кабель и что в телефон вставлена SIM-карта, затем повторите.":
+        "iPhone не видав дані для активації: {e}. Розблокуйте екран, перевірте кабель і що в телефон вставлена SIM-картка, потім повторіть.",
+    "  ⚠ SIM-карта не обнаружена. Старые iPhone обычно не активируются без SIM.":
+        "  ⚠ SIM-картку не виявлено. Старі iPhone зазвичай не активуються без SIM.",
+    "Сервер Apple не выдал запись активации для этого устройства.":
+        "Сервер Apple не видав запис активації для цього пристрою.",
+    "Вставьте рабочую SIM-карту и повторите.":
+        "Вставте робочу SIM-картку і повторіть.",
+    "⚠ Старая iOS не приняла пропуск экранов ({e}) — пройдите их на iPhone вручную.":
+        "⚠ Стара iOS не прийняла пропуск екранів ({e}) — пройдіть їх на iPhone вручну.",
+    "не поддерживается этой версией iOS":
+        "не підтримується цією версією iOS",
 }
