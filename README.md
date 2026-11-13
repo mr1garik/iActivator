@@ -121,6 +121,7 @@ The app will not activate an iPhone with Activation Lock (iCloud) enabled: the o
 - On launch the app quietly checks GitHub. If a new version is out, a bar appears at the top of the Activation tab.
 - **One-click auto-update:** press **"Download & install"** — the app downloads the new version, replaces itself and restarts. No manual reinstall.
 - Check manually: About → Check for updates.
+- Before installing, the download is checked (size and checksum), so a cut-off download can't replace a working app. The previous version is kept in the data folder (`previous-version`) in case you need to go back.
 - An update replaces only the app itself. Device history and settings live in a separate data folder and are never lost on update.
 
 ## Download & build

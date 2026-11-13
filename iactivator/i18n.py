@@ -331,6 +331,16 @@ EN: dict[str, str] = {
     "❌ Не удалось сохранить журнал: {e}": "❌ Could not save the journal: {e}",
     "✅ Журнал сохранён в файл: {path}": "✅ Journal saved to file: {path}",
     "iActivator {v} запущен · {sys} · Python {py}": "iActivator {v} started · {sys} · Python {py}",
+    # ---- self-update: verification and backup ----
+    "❌ Обновление не установлено: {e}. Программа осталась прежней.": "❌ Update not installed: {e}. The app was left unchanged.",
+    "Загрузка оборвалась ({got} из {total} байт). Повторите позже.": "The download was cut off ({got} of {total} bytes). Try again later.",
+    "Скачанный файл слишком мал и не похож на программу.": "The downloaded file is too small to be the app.",
+    "Скачанный файл повреждён (контрольная сумма не совпала).": "The downloaded file is damaged (checksum mismatch).",
+    "Скачанный файл не является программой Windows.": "The downloaded file is not a Windows program.",
+    "Скачанный архив повреждён.": "The downloaded archive is damaged.",
+    "Предыдущая версия будет сохранена в: {path}": "The previous version will be kept in: {path}",
+    "Предыдущая версия сохранена в: {path}": "The previous version was saved to: {path}",
+    "⚠ Не удалось сохранить предыдущую версию: {e}": "⚠ Could not save the previous version: {e}",
 }
 
 # Russian source -> Ukrainian.
@@ -622,4 +632,14 @@ UK: dict[str, str] = {
     "❌ Не удалось сохранить журнал: {e}": "❌ Не вдалося зберегти журнал: {e}",
     "✅ Журнал сохранён в файл: {path}": "✅ Журнал збережено у файл: {path}",
     "iActivator {v} запущен · {sys} · Python {py}": "iActivator {v} запущено · {sys} · Python {py}",
+    # ---- self-update: verification and backup ----
+    "❌ Обновление не установлено: {e}. Программа осталась прежней.": "❌ Оновлення не встановлено: {e}. Програма залишилася попередньою.",
+    "Загрузка оборвалась ({got} из {total} байт). Повторите позже.": "Завантаження обірвалося ({got} з {total} байт). Повторіть пізніше.",
+    "Скачанный файл слишком мал и не похож на программу.": "Завантажений файл замалий і не схожий на програму.",
+    "Скачанный файл повреждён (контрольная сумма не совпала).": "Завантажений файл пошкоджено (контрольна сума не збіглася).",
+    "Скачанный файл не является программой Windows.": "Завантажений файл не є програмою Windows.",
+    "Скачанный архив повреждён.": "Завантажений архів пошкоджено.",
+    "Предыдущая версия будет сохранена в: {path}": "Попередню версію буде збережено в: {path}",
+    "Предыдущая версия сохранена в: {path}": "Попередню версію збережено в: {path}",
+    "⚠ Не удалось сохранить предыдущую версию: {e}": "⚠ Не вдалося зберегти попередню версію: {e}",
 }
