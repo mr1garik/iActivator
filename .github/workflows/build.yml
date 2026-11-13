@@ -18,7 +18,9 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install -r requirements.txt -c constraints.txt
+      - name: Tests
+        run: python -m unittest discover tests
       - name: Build (Windows)
         if: runner.os == 'Windows'
         run: pyinstaller --noconfirm --onefile --windowed --name iActivator --icon assets/icon.ico --collect-all pymobiledevice3 --collect-all webview --collect-submodules keyring --collect-submodules pystray --collect-submodules PIL --collect-data fpdf --add-data "iactivator/page.html;iactivator" main.py

@@ -1,14 +1,18 @@
-"""Check GitHub Releases for a newer version.
+"""Check GitHub Releases for a newer version and, in the packaged build, install it.
 
-Read-only: this module never downloads or replaces anything — it only reports
-whether a newer release exists and the page to get it from. The program file and
-the data folder are separate, so updating the program never touches history or
-settings. Fails quietly when offline.
+The program file and the data folder are separate, so updating the program never
+touches history or settings. Before the running program is replaced, the download
+is verified (size, SHA-256 when GitHub publishes it, and that it really is a
+program / a readable archive) and the current version is copied to the data
+folder, so a bad download can never leave the user without a working app.
+Fails quietly when offline.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import shutil
 import ssl
 import subprocess
 import sys
@@ -72,6 +76,8 @@ def check(force: bool = False) -> dict:
         for a in data.get("assets", []):
             if a.get("name") == want:
                 info["download"] = a.get("browser_download_url")
+                info["size"] = a.get("size")
+                info["digest"] = a.get("digest")  # "sha256:…", published by GitHub for newer releases
         info["available"] = _ver_tuple(info.get("latest", "")) > _ver_tuple(__version__)
     except Exception as e:
         info["error"] = True  # offline, no releases yet, or TLS/cert trouble
@@ -123,14 +129,15 @@ def start_install() -> dict:
         if _prog["active"]:
             return {"started": True}
         _prog.update(active=True, pct=0, done=False, error="")
-    threading.Thread(target=_run_install, args=(url,), daemon=True).start()
+    threading.Thread(target=_run_install, args=(url, info.get("size"), info.get("digest")), daemon=True).start()
     return {"started": True}
 
 
-def _run_install(url: str) -> None:
+def _run_install(url: str, size: int | None = None, digest: str | None = None) -> None:
     try:
         applog.add(t("Загружаю обновление…"))
         path = _download(url)
+        _verify_download(path, size, digest)
         applog.add(t("Устанавливаю обновление и перезапускаю…"))
         if sys.platform == "win32":
             _install_windows(path)
@@ -143,8 +150,17 @@ def _run_install(url: str) -> None:
         threading.Timer(0.5, lambda: os._exit(0)).start()
     except Exception as e:
         applog.exception(e)
+        applog.add(t("❌ Обновление не установлено: {e}. Программа осталась прежней.", e=e))
         with _lock:
-            _prog.update(active=False, error=f"{type(e).__name__}: {e}")
+            _prog.update(active=False, error=str(e) if isinstance(e, UpdateError) else f"{type(e).__name__}: {e}")
+
+
+class UpdateError(Exception):
+    """A problem with the downloaded update; the message is written for the user."""
+
+
+# A real build is tens of megabytes; anything smaller is an error page or a cut-off download.
+MIN_UPDATE_BYTES = 5 * 1024 * 1024
 
 
 def _download(url: str) -> Path:
@@ -163,7 +179,46 @@ def _download(url: str) -> Path:
             if total:
                 with _lock:
                     _prog["pct"] = min(99, int(got * 100 / total))
+    if total and got != total:
+        raise UpdateError(t("Загрузка оборвалась ({got} из {total} байт). Повторите позже.", got=got, total=total))
     return dest
+
+
+def _verify_download(path: Path, size: int | None, digest: str | None) -> None:
+    """Refuse to install anything that is not the complete file from the release."""
+    actual = path.stat().st_size
+    if size and actual != size:
+        raise UpdateError(t("Загрузка оборвалась ({got} из {total} байт). Повторите позже.", got=actual, total=size))
+    if actual < MIN_UPDATE_BYTES:
+        raise UpdateError(t("Скачанный файл слишком мал и не похож на программу."))
+    if digest and digest.lower().startswith("sha256:"):
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        if h.hexdigest() != digest.split(":", 1)[1].strip().lower():
+            raise UpdateError(t("Скачанный файл повреждён (контрольная сумма не совпала)."))
+    if path.suffix.lower() == ".exe":
+        with open(path, "rb") as f:
+            if f.read(2) != b"MZ":
+                raise UpdateError(t("Скачанный файл не является программой Windows."))
+    else:
+        try:
+            with zipfile.ZipFile(path) as z:
+                broken = z.testzip()
+                has_app = any(".app/" in n for n in z.namelist())
+        except zipfile.BadZipFile as e:
+            raise UpdateError(t("Скачанный архив повреждён.")) from e
+        if broken or not has_app:
+            raise UpdateError(t("Скачанный архив повреждён."))
+
+
+def backup_dir() -> Path:
+    """Where the previous version is kept after an update (inside the data folder)."""
+    from .core import app_data_dir
+    d = app_data_dir() / "previous-version"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 def _current_app_macos() -> Path:
@@ -174,47 +229,73 @@ def _current_app_macos() -> Path:
     raise RuntimeError(t("Не удалось найти установленную программу для замены."))
 
 
+# Paths are passed to the helper scripts as arguments, never written into the script
+# text, so names with spaces, quotes or non-Latin letters (a Cyrillic user folder)
+# cannot break them.
+_MAC_HELPER = r"""#!/bin/bash
+# args: pid new_app app backup
+PID="$1"; NEW="$2"; APP="$3"; BAK="$4"
+while kill -0 "$PID" 2>/dev/null; do sleep 0.3; done
+if ditto "$NEW" "$APP.new"; then
+  rm -rf "$BAK"
+  if mv "$APP" "$BAK" 2>/dev/null || { ditto "$APP" "$BAK" && rm -rf "$APP"; }; then
+    if mv "$APP.new" "$APP"; then
+      xattr -dr com.apple.quarantine "$APP" 2>/dev/null
+    else
+      rm -rf "$APP"; mv "$BAK" "$APP" 2>/dev/null || ditto "$BAK" "$APP"   # put the old version back
+    fi
+  else
+    rm -rf "$APP.new"
+  fi
+else
+  rm -rf "$APP.new"
+fi
+open "$APP"
+"""
+
+_WIN_HELPER = (
+    "@echo off\r\n"
+    "rem args: new_exe current_exe\r\n"
+    "setlocal\r\n"
+    "set /a N=0\r\n"
+    ":wait\r\n"
+    "ping -n 2 127.0.0.1 >nul\r\n"            # ~1 s; "timeout" does not work without a console
+    'move /y "%~1" "%~2" >nul 2>&1 && goto done\r\n'
+    "set /a N+=1\r\n"
+    "if %N% lss 60 goto wait\r\n"             # give up after a minute: the old program is still in place
+    ":done\r\n"
+    'start "" "%~2"\r\n'
+    'del "%~f0"\r\n'
+)
+
+
 def _install_macos(zip_path: Path) -> None:
     app = _current_app_macos()
     extract = zip_path.parent / "extracted"
     with zipfile.ZipFile(zip_path) as z:
         z.extractall(extract)
     new_app = next(p for p in extract.rglob("*.app") if p.is_dir())
-    pid = os.getpid()
-    # Wait for us to quit, then swap the bundle safely: copy the new app next to the
-    # old one first, and only replace once the copy succeeded — so a failed copy can
-    # never leave the user without an app. Clear quarantine (we downloaded it
-    # ourselves, so it has none, but be safe) and relaunch.
-    script = (
-        "#!/bin/bash\n"
-        f'while kill -0 {pid} 2>/dev/null; do sleep 0.3; done\n'
-        f'if ditto "{new_app}" "{app}.new"; then\n'
-        f'  rm -rf "{app}"\n'
-        f'  mv "{app}.new" "{app}"\n'
-        f'  xattr -dr com.apple.quarantine "{app}" 2>/dev/null\n'
-        f'fi\n'
-        f'open "{app}"\n'
-    )
+    backup = backup_dir() / app.name
+    # The helper waits for us to quit, copies the new app next to the old one, moves
+    # the old one to the backup folder and only then puts the new one in place; if
+    # that last step fails, the old version is moved back.
     helper = zip_path.parent / "update.sh"
-    helper.write_text(script, encoding="utf-8")
+    helper.write_text(_MAC_HELPER, encoding="utf-8")
     helper.chmod(0o755)
-    subprocess.Popen(["/bin/bash", str(helper)], start_new_session=True)
+    applog.add(t("Предыдущая версия будет сохранена в: {path}", path=backup))
+    subprocess.Popen(["/bin/bash", str(helper), str(os.getpid()), str(new_app), str(app), str(backup)],
+                     start_new_session=True)
 
 
 def _install_windows(exe_path: Path) -> None:
     cur = Path(sys.executable).resolve()
+    backup = backup_dir() / cur.name
+    try:
+        shutil.copy2(cur, backup)  # a running .exe can be read, so keep the current version first
+        applog.add(t("Предыдущая версия сохранена в: {path}", path=backup))
+    except OSError as e:
+        applog.add(t("⚠ Не удалось сохранить предыдущую версию: {e}", e=e))
     helper = exe_path.parent / "update.bat"
-    helper.write_text(
-        "@echo off\r\n"
-        "timeout /t 1 /nobreak >nul\r\n"
-        ":loop\r\n"
-        f'move /y "{exe_path}" "{cur}" >nul 2>&1 && goto done\r\n'
-        "timeout /t 1 /nobreak >nul\r\n"
-        "goto loop\r\n"
-        ":done\r\n"
-        f'start "" "{cur}"\r\n'
-        'del "%~f0"\r\n',
-        encoding="utf-8",
-    )
+    helper.write_text(_WIN_HELPER, encoding="ascii", newline="")
     DETACHED = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
-    subprocess.Popen(["cmd", "/c", str(helper)], creationflags=DETACHED, close_fds=True)
+    subprocess.Popen(["cmd", "/c", str(helper), str(exe_path), str(cur)], creationflags=DETACHED, close_fds=True)
