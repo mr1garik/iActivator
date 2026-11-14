@@ -2,7 +2,9 @@
 
 **Download:** Windows — `iActivator-windows-setup.exe` (installer, recommended) or `iActivator-windows-portable.zip` (no installation). macOS — `iActivator-macos.zip`.
 
-**Have 3.0.1?** Press "Download & install" in the app — the update installs itself. **Coming from 3.0?** Download and install this version by hand once. Your history and settings are kept.
+**Have 3.0.1?** Press "Download & install" in the app — the update installs itself. Your history and settings are kept.
+
+**Have 3.0?** Version 3.0 had a bug in its built-in updater: on macOS the updated app could fail to start. To keep your app safe, 3.0 no longer finds new versions to install, so its "Download & install" button says there is no update — this is expected, not a problem with your computer. Download and install this version by hand once (Windows: run the installer; macOS: unzip and drag iActivator to Applications, replacing the old one). Your history and settings are kept, and from then on updates install themselves.
 
 ### What's new
 - History: save a small TXT file for each phone (details, part serial numbers, all events), or all phones at once.
