@@ -76,6 +76,7 @@
   button.icon { width:30px; padding:0; justify-content:center; }
   button.primary { background:var(--accent); color:#fff; height:36px; padding:0 20px; font-size:14px; font-weight:600; border-radius:10px; }
   button.ghost-danger { background:transparent; color:var(--danger); }
+  #driverHint a { color:var(--accent); cursor:pointer; text-decoration:underline; }
   button:disabled { opacity:.45; cursor:default; filter:none; }
 
   /* device */
@@ -238,6 +239,7 @@
       </div>
       <div id="info" class="info"></div>
       <div id="badges" class="badges"></div>
+      <div id="driverHint" class="hint" style="display:none;margin:6px 0 0">iPhone не определяется? <a id="driverHintLink">Проверить драйвер Apple</a></div>
     </div>
 
     <div class="grid">
@@ -375,6 +377,13 @@
     <div class="card" id="startupCard" style="display:none">
       <h2>Запуск</h2>
       <label class="sw"><input type="checkbox" id="autostart"><span class="t">Запускать вместе с Windows<small>Программа откроется сама при включении компьютера</small></span></label>
+    </div>
+    <div class="card" id="driverCard" style="display:none">
+      <h2><span class="sp">Драйвер Apple (Windows)</span><button id="driverCheck"><svg><use href="#i-refresh"/></svg>Проверить</button></h2>
+      <p class="hint" style="margin-top:0">Без драйвера Apple программа не видит iPhone. Здесь его можно проверить и исправить.</p>
+      <div id="driverStatus" class="empty"></div>
+      <div class="row" id="driverActions" style="gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+      <div id="driverResult" class="hint"></div>
     </div>
     <div class="card">
       <h2>Перенос настроек</h2>
@@ -627,6 +636,21 @@ const T_EN = {
   "Не удалось прочитать": "Could not read",
   "мАч": "mAh",
   "Локатор/MDM": "Find My/MDM",
+  // Apple driver (Windows)
+  "iPhone не определяется?": "iPhone not detected?",
+  "Проверить драйвер Apple": "Check the Apple driver",
+  "Драйвер Apple (Windows)": "Apple driver (Windows)",
+  "Без драйвера Apple программа не видит iPhone. Здесь его можно проверить и исправить.": "Without Apple's driver the app can't see an iPhone. Check and fix it here.",
+  "Проверяю драйвер…": "Checking the driver…",
+  "Установить Apple Devices": "Install Apple Devices",
+  "Перезапустить службу Apple": "Restart the Apple service",
+  "Переустановить драйвер iPhone": "Reinstall the iPhone driver",
+  "Windows попросит разрешение администратора. Продолжить?": "Windows will ask for administrator permission. Continue?",
+  "Открываю Microsoft Store…": "Opening the Microsoft Store…",
+  "Выполняю… это может занять минуту.": "Working… this can take a minute.",
+  "Установите «Apple Devices» в Microsoft Store, затем перезапустите iActivator.": "Install “Apple Devices” in the Microsoft Store, then restart iActivator.",
+  "Готово. Проверяю ещё раз…": "Done. Checking again…",
+  "Не удалось выполнить операцию.": "The operation failed.",
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -766,6 +790,21 @@ const T_UK = {
   "мАч": "мАг",
   "Локатор/MDM": "Локатор/MDM",
   "Английский (English)": "Англійська (English)",
+  // Apple driver (Windows)
+  "iPhone не определяется?": "iPhone не визначається?",
+  "Проверить драйвер Apple": "Перевірити драйвер Apple",
+  "Драйвер Apple (Windows)": "Драйвер Apple (Windows)",
+  "Без драйвера Apple программа не видит iPhone. Здесь его можно проверить и исправить.": "Без драйвера Apple програма не бачить iPhone. Тут його можна перевірити й виправити.",
+  "Проверяю драйвер…": "Перевіряю драйвер…",
+  "Установить Apple Devices": "Встановити Apple Devices",
+  "Перезапустить службу Apple": "Перезапустити службу Apple",
+  "Переустановить драйвер iPhone": "Перевстановити драйвер iPhone",
+  "Windows попросит разрешение администратора. Продолжить?": "Windows попросить дозвіл адміністратора. Продовжити?",
+  "Открываю Microsoft Store…": "Відкриваю Microsoft Store…",
+  "Выполняю… это может занять минуту.": "Виконую… це може зайняти хвилину.",
+  "Установите «Apple Devices» в Microsoft Store, затем перезапустите iActivator.": "Встановіть «Apple Devices» у Microsoft Store, потім перезапустіть iActivator.",
+  "Готово. Проверяю ещё раз…": "Готово. Перевіряю ще раз…",
+  "Не удалось выполнить операцию.": "Не вдалося виконати операцію.",
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
 function cap(s) { return LANG === "en" && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
@@ -775,7 +814,7 @@ function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" 
 const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",
   "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult",
   "status", "connText", "ver", "aboutVer", "netCount", "histCount", "device", "language", "region",
-  "security", "saved", "quickNet"]);
+  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult"]);
 const _i18nText = new WeakMap(), _i18nAttr = new WeakMap();
 function _skip(el) { for (let n = el; n; n = n.parentElement) if (n.id && I18N_SKIP.has(n.id)) return true; return false; }
 function translateStatic() {
@@ -827,6 +866,7 @@ async function refreshDynamic() {
   fillNets();
   renderLog();
   if (hist && hist.devices) renderHistory();
+  if (aboutData && aboutData.driver_supported) { if (driverLast) checkDriver(); else renderDriver(); }
   if ($("device").value) onDevice(false);
   else if ($("checkResults").classList.contains("empty")) $("checkResults").textContent = T(CHECK_DEFAULT);
   renderAbout();
@@ -913,10 +953,50 @@ function setConn(label) {
   $("connDot").classList.toggle("on", !!label);
   $("connText").textContent = label || T("Нет устройства");
 }
+// ---- Apple driver (Windows) ----
+const DRIVER_FIX = { install: "Установить Apple Devices", restart: "Перезапустить службу Apple",
+                     reinstall: "Переустановить драйвер iPhone" };
+let driverLast = null;
+function driverHint(show) {
+  if (aboutData && aboutData.driver_supported) $("driverHint").style.display = show ? "" : "none";
+}
+async function checkDriver() {
+  $("driverStatus").className = "empty";
+  $("driverStatus").textContent = T("Проверяю драйвер…");
+  try { driverLast = await api("/api/driver"); } catch { driverLast = null; }
+  renderDriver();
+}
+function renderDriver() {
+  const r = driverLast;
+  $("driverStatus").className = r ? ({ ok: "good", warn: "warn", bad: "bad" }[r.level] || "") : "empty";
+  $("driverStatus").textContent = r ? r.message : T("Нажмите «Проверить».");
+  $("driverActions").innerHTML = Object.keys(DRIVER_FIX).map(a =>
+    `<button data-fix="${a}"${r && r.fix === a ? ' class="primary"' : ""}>${esc(T(DRIVER_FIX[a]))}</button>`).join("");
+  $("driverActions").querySelectorAll("button").forEach(b => b.onclick = () => fixDriver(b.dataset.fix));
+}
+async function fixDriver(action) {
+  if (action !== "install" && !confirm(T("Windows попросит разрешение администратора. Продолжить?"))) return;
+  const btns = $("driverActions").querySelectorAll("button");
+  btns.forEach(b => b.disabled = true);
+  $("driverResult").textContent = action === "install" ? T("Открываю Microsoft Store…") : T("Выполняю… это может занять минуту.");
+  let res = {};
+  try { res = await api("/api/driver/fix", { action }); } catch { res = { error: T("Не удалось выполнить операцию.") }; }
+  finally { btns.forEach(b => b.disabled = false); }
+  if (res.error) { $("driverResult").textContent = res.error; return; }
+  if (action === "install") {
+    $("driverResult").textContent = T("Установите «Apple Devices» в Microsoft Store, затем перезапустите iActivator.");
+    return;
+  }
+  $("driverResult").textContent = T("Готово. Проверяю ещё раз…");
+  await checkDriver();
+  pollDevices(true);
+}
+
 async function pollDevices(full) {
   let res;
   try { res = await api("/api/devices" + (full ? "?full=1" : "")); } catch { return; }
-  if (res.error) return;
+  if (res.error) { driverHint(true); return; }
+  driverHint(!res.length);
   const cur = $("device").value;
   const fresh = res.find(d => !known.has(d.serial));
   known = new Set(res.map(d => d.serial));
@@ -1288,6 +1368,12 @@ async function init() {
   const a = aboutData;
   renderAbout();
   showSupport(aboutData);
+  if (a.driver_supported) {
+    $("driverCard").style.display = "";
+    $("driverCheck").onclick = checkDriver;
+    $("driverHintLink").onclick = () => { show("settings"); checkDriver(); };
+    renderDriver();
+  }
   if (a.autostart_supported) {
     $("startupCard").style.display = "";
     $("autostart").checked = a.autostart;
