@@ -399,6 +399,10 @@ EN: dict[str, str] = {
     "Авто-режим: {label} уже активирован — пропускаю": "Auto mode: {label} is already activated — skipping",
     "⛔ Авто-режим остановлен: {reason}": "⛔ Auto mode stopped: {reason}",
     "Нет ответа от iPhone или службы Apple за {n} с": "No answer from the iPhone or the Apple service in {n} s",
+    # ---- colour themes ----
+    "синяя ночь": "blue night",
+    "мятная": "mint",
+    "графит": "graphite",
 }
 
 # Russian source -> Ukrainian.
@@ -758,4 +762,8 @@ UK: dict[str, str] = {
     "Авто-режим: {label} уже активирован — пропускаю": "Авто-режим: {label} уже активовано — пропускаю",
     "⛔ Авто-режим остановлен: {reason}": "⛔ Авто-режим зупинено: {reason}",
     "Нет ответа от iPhone или службы Apple за {n} с": "Немає відповіді від iPhone або служби Apple за {n} с",
+    # ---- colour themes ----
+    "синяя ночь": "синя ніч",
+    "мятная": "м'ятна",
+    "графит": "графіт",
 }

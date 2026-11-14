@@ -614,7 +614,8 @@ def _driver_status() -> dict:
     return {"supported": driver.supported(), **verdict, "facts": facts}
 
 
-THEME_NAMES = {"auto": "как в системе", "light": "светлая", "dark": "тёмная"}
+THEME_NAMES = {"auto": "как в системе", "light": "светлая", "dark": "тёмная",
+               "night": "синяя ночь", "mint": "мятная", "graphite": "графит"}
 WINDOW = None  # pywebview window, for native file dialogs
 
 

@@ -7,12 +7,19 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2084%2084%22%3E%3Crect%20x%3D%22.5%22%20y%3D%22.5%22%20width%3D%2283%22%20height%3D%2283%22%20rx%3D%2220%22%20fill%3D%22%23F6F6F3%22%20stroke%3D%22%23E2E2DC%22/%3E%3Crect%20x%3D%2227%22%20y%3D%2210%22%20width%3D%2230%22%20height%3D%2250%22%20rx%3D%228%22%20fill%3D%22%232E3035%22/%3E%3Crect%20x%3D%2231%22%20y%3D%2215%22%20width%3D%2222%22%20height%3D%2238%22%20rx%3D%224%22%20fill%3D%22%23F6F6F3%22/%3E%3Cpath%20d%3D%22M38%2030l4-6v8h4l-4%208v-6z%22%20fill%3D%22%232E3035%22/%3E%3Cpath%20d%3D%22M42%2060v14%22%20stroke%3D%22%239AA3AD%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E">
 <style>
   :root { --bg:#f5f5f7; --side:#ececf0; --card:#fff; --text:#1d1d1f; --muted:#86868b; --line:#e5e5ea; --field:#f2f2f5;
-          --accent:#0297DE; --accent-soft:#0297DE16; --brand:#FC734D; --brand-soft:#FC734D1f; --danger:#e0262f; --good:#1f9d55; --warn:#c77700;
+          --accent:#0297DE; --accent-soft:#0297DE16; --on-accent:#fff; --brand:#FC734D; --brand-soft:#FC734D1f; --danger:#e0262f; --good:#1f9d55; --warn:#c77700;
           --shadow:0 1px 2px #0000000a, 0 4px 16px #0000000a; }
   /* Theme: "auto" follows the system; data-theme on <html> forces light or dark. */
   :root[data-theme=dark] { color-scheme:dark; --bg:#161618; --side:#1e1e21; --card:#232326; --text:#f5f5f7; --muted:#98989d; --line:#323236; --field:#2c2c30;
           --accent:#0297DE; --accent-soft:#0297DE2b; --brand:#FC734D; --brand-soft:#FC734D2b; --danger:#ff453a; --good:#30d158; --warn:#ff9f0a; --shadow:none; }
   :root[data-theme=light] { color-scheme:light; }
+  /* Extra colour themes, the same family as iOS Panic Reader. */
+  :root[data-theme=night] { color-scheme:dark; --bg:#0b1220; --side:#0d1526; --card:#111a2e; --text:#e5e7eb; --muted:#94a3b8; --line:#1e2a44;
+          --field:#18233b; --accent:#60a5fa; --accent-soft:#60a5fa2b; --on-accent:#0b1220; --danger:#f87171; --good:#4ade80; --warn:#fbbf24; --shadow:none; }
+  :root[data-theme=mint] { color-scheme:light; --bg:#eef5f3; --side:#e2eeea; --card:#fff; --text:#1f2937; --muted:#5b6b67; --line:#d6e5e0;
+          --field:#e8f2ef; --accent:#0f766e; --accent-soft:#0f766e18; --on-accent:#fff; }
+  :root[data-theme=graphite] { color-scheme:dark; --bg:#141414; --side:#181818; --card:#1e1e1e; --text:#f5f5f5; --muted:#a3a3a3; --line:#2c2c2c;
+          --field:#262626; --accent:#f59e0b; --accent-soft:#f59e0b2b; --on-accent:#111; --danger:#f87171; --good:#4ade80; --warn:#fbbf24; --shadow:none; }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme=light]) { color-scheme:dark; --bg:#161618; --side:#1e1e21; --card:#232326; --text:#f5f5f7; --muted:#98989d; --line:#323236; --field:#2c2c30;
             --accent:#0297DE; --accent-soft:#0297DE2b; --brand:#FC734D; --brand-soft:#FC734D2b; --danger:#ff453a; --good:#30d158; --warn:#ff9f0a; --shadow:none; }
@@ -74,7 +81,7 @@
     font:inherit; font-weight:500; cursor:pointer; white-space:nowrap; display:inline-flex; gap:6px; align-items:center; }
   button:hover { filter:brightness(.96); }
   button.icon { width:30px; padding:0; justify-content:center; }
-  button.primary { background:var(--accent); color:#fff; height:36px; padding:0 20px; font-size:14px; font-weight:600; border-radius:10px; }
+  button.primary { background:var(--accent); color:var(--on-accent); height:36px; padding:0 20px; font-size:14px; font-weight:600; border-radius:10px; }
   button.ghost-danger { background:transparent; color:var(--danger); }
   #driverHint a { color:var(--accent); cursor:pointer; text-decoration:underline; }
   button:disabled { opacity:.45; cursor:default; filter:none; }
@@ -127,6 +134,12 @@
   .seg { display:inline-flex; background:var(--field); border-radius:9px; padding:2px; gap:2px; }
   .seg button { height:28px; background:transparent; border-radius:7px; }
   .seg button.on { background:var(--card); box-shadow:var(--shadow); font-weight:600; }
+  .themes { display:flex; flex-wrap:wrap; gap:8px; }
+  .themes button { height:auto; flex-direction:column; gap:6px; padding:8px 10px 7px; width:104px; background:var(--field);
+                   border:2px solid transparent; border-radius:10px; font-weight:500; }
+  .themes button.on { border-color:var(--accent); font-weight:600; }
+  .themes .pv { display:flex; width:100%; height:34px; border-radius:6px; overflow:hidden; border:1px solid var(--line); }
+  .themes .pv i { flex:1; } .themes .pv i:last-child { flex:none; width:30%; }
   .wallet { display:flex; gap:8px; align-items:center; padding:7px 0; border-top:1px solid var(--line); }
   .wallet code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; font:12px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .wallet b { width:110px; flex:none; }
@@ -365,9 +378,7 @@
     <div class="card">
       <h2>Оформление</h2>
       <div class="row"><span class="lbl">Тема</span>
-        <div class="seg" id="theme">
-          <button data-theme="auto">Как в системе</button><button data-theme="light">Светлая</button><button data-theme="dark">Тёмная</button>
-        </div></div>
+        <div class="themes" id="theme"><button data-theme="auto"><span class="pv"><i style="background:linear-gradient(135deg,#f5f5f7 50%,#161618 50%)"></i><i style="background:transparent"></i><i style="background:#0297DE"></i></span><span>Как в системе</span></button><button data-theme="light"><span class="pv"><i style="background:#f5f5f7"></i><i style="background:#ffffff"></i><i style="background:#0297DE"></i></span><span>Светлая</span></button><button data-theme="dark"><span class="pv"><i style="background:#161618"></i><i style="background:#232326"></i><i style="background:#0297DE"></i></span><span>Тёмная</span></button><button data-theme="night"><span class="pv"><i style="background:#0b1220"></i><i style="background:#111a2e"></i><i style="background:#60a5fa"></i></span><span>Синяя ночь</span></button><button data-theme="mint"><span class="pv"><i style="background:#eef5f3"></i><i style="background:#ffffff"></i><i style="background:#0f766e"></i></span><span>Мятная</span></button><button data-theme="graphite"><span class="pv"><i style="background:#141414"></i><i style="background:#1e1e1e"></i><i style="background:#f59e0b"></i></span><span>Графит</span></button></div></div>
       <div class="row"><span class="lbl">Язык программы</span>
         <select id="uiLang" style="max-width:220px">
           <option value="ru">Русский</option>
@@ -659,6 +670,10 @@ const T_EN = {
   // several iPhones
   "Сейчас": "Now",
   "В очереди": "Waiting",
+  // colour themes
+  "Синяя ночь": "Blue night",
+  "Мятная": "Mint",
+  "Графит": "Graphite",
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -820,6 +835,10 @@ const T_UK = {
   // several iPhones
   "Сейчас": "Зараз",
   "В очереди": "У черзі",
+  // colour themes
+  "Синяя ночь": "Синя ніч",
+  "Мятная": "М'ятна",
+  "Графит": "Графіт",
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
 function cap(s) { return LANG === "en" && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
@@ -1351,7 +1370,7 @@ async function pollLog() {
 
 // ---------- settings page ----------
 function applyTheme(t) {
-  if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  if (["light", "dark", "night", "mint", "graphite"].includes(t)) document.documentElement.dataset.theme = t;
   else delete document.documentElement.dataset.theme;
   document.querySelectorAll("#theme button").forEach(b => b.classList.toggle("on", b.dataset.theme === (t || "auto")));
 }
