@@ -55,7 +55,8 @@ class Options(unittest.TestCase):
                 self.assertEqual(args.count("--exclude-module"), len(build.EXCLUDES))
                 self.assertTrue(any(a.startswith("iactivator/page.html") for a in args))
                 self.assertEqual(args[-1], "main.py")
-        self.assertIn("--onefile", build.pyinstaller_args(platform="win32"))
+        # A folder on Windows (no unpacking at every start; the installer is made from it)
+        self.assertNotIn("--onefile", build.pyinstaller_args(platform="win32"))
         self.assertNotIn("--onefile", build.pyinstaller_args(platform="darwin"))  # .app bundle
 
     def test_needed_packages_are_never_excluded(self):

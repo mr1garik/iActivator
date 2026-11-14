@@ -24,10 +24,15 @@ jobs:
       - name: Build (Windows)
         if: runner.os == 'Windows'
         run: python build.py
-      - name: Name the Windows release file
+      - name: Installer and portable zip (Windows)
         if: runner.os == 'Windows'
-        shell: bash
-        run: mv dist/iActivator.exe dist/iActivator-windows.exe
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $v = (Select-String -Path iactivator/__init__.py -Pattern '[0-9]+\.[0-9]+(\.[0-9]+)?').Matches[0].Value
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$v" installer\iActivator.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path dist\iActivator -DestinationPath dist\iActivator-windows-portable.zip
       - name: Build (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -37,11 +42,13 @@ jobs:
         with:
           name: iActivator-${{ runner.os }}
           path: |
-            dist/iActivator-windows.exe
+            dist/iActivator-windows-setup.exe
+            dist/iActivator-windows-portable.zip
             dist/iActivator-macos.zip
 
-  # Publish a GitHub Release so the app's built-in update check can find the new
-  # version and the download page. Runs after both builds succeed.
+  # Create the GitHub Release as a DRAFT: neither users nor the app's update check see it
+  # until "Publish release" is pressed on GitHub, so the files can be tried first.
+  # Runs after both builds succeed.
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -58,6 +65,8 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.v }}
           name: iActivator v${{ steps.ver.outputs.v }}
+          draft: true
           files: |
-            artifacts/iActivator-Windows/iActivator-windows.exe
+            artifacts/iActivator-Windows/iActivator-windows-setup.exe
+            artifacts/iActivator-Windows/iActivator-windows-portable.zip
             artifacts/iActivator-macOS/iActivator-macos.zip

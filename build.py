@@ -3,15 +3,15 @@ workflow, build_windows.bat and build_mac.sh.
 
     python build.py
 
-Windows: dist/iActivator.exe (one file).  macOS: dist/iActivator.app.
+Windows: dist/iActivator/ (a folder: the installer, installer/iActivator.iss, and the
+portable zip are made from it).  macOS: dist/iActivator.app.
 
 Why the exclusions: pymobiledevice3 brings in the dependencies of its command-line
 tools (an IPython shell, screen streaming with PyAV, the iOS 17+ network tunnel, firmware
 and backup parsers, a web server). This app uses only the USB lockdown services
 (activation, configuration profiles, diagnostics, crash logs), which import none of
-them, but `--collect-all pymobiledevice3` would pack them all: over 150 MB, which the
-one-file Windows build unpacks to a temporary folder on every start (and antivirus
-scans it), so the app started slowly. tests/test_build.py checks that the app's own
+them, but `--collect-all pymobiledevice3` would pack them all: over 150 MB more to
+install, scan and load. tests/test_build.py checks that the app's own
 imports never need an excluded package.
 """
 from __future__ import annotations
@@ -47,7 +47,9 @@ def pyinstaller_args(entry: str = "main.py", name: str = "iActivator", excludes:
             "--collect-submodules", "keyring", "--collect-data", "fpdf",
             "--add-data", f"iactivator/page.html{sep}iactivator"]
     if platform == "win32":
-        args += ["--onefile", "--icon", "assets/icon.ico", "--collect-submodules", "pystray",
+        # A folder, not --onefile: one file unpacks everything to a temporary folder on
+        # every start (and antivirus scans it), which made the app slow to open.
+        args += ["--icon", "assets/icon.ico", "--collect-submodules", "pystray",
                  "--collect-submodules", "PIL"]
     elif platform == "darwin":
         args += ["--icon", "assets/icon.icns"]

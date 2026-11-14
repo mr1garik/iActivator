@@ -781,6 +781,11 @@ def main():
         webview = None
 
     applog.cleanup()
+    try:
+        if autostart.repair():
+            STATE.log("Автозапуск: путь к программе обновлён", level="debug")
+    except Exception:
+        pass  # never block the start over the start-up entry
     i18n.set_lang(settings.load()["ui"].get("lang", "ru"))
     STATE.log(t("iActivator {v} запущен · {sys} · Python {py}", v=__version__,
                 sys=f"{platform.system()} {platform.release()}", py=platform.python_version()),
