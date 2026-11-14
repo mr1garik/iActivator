@@ -66,6 +66,8 @@ jobs:
           tag_name: v${{ steps.ver.outputs.v }}
           name: iActivator v${{ steps.ver.outputs.v }}
           draft: true
+          # The text users see; without it GitHub shows the last commit message.
+          body_path: RELEASE_NOTES.md
           files: |
             artifacts/iActivator-Windows/iActivator-windows-setup.exe
             artifacts/iActivator-Windows/iActivator-windows-portable.zip
