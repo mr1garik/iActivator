@@ -340,9 +340,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/update/progress":
             return self._send(200, update.install_progress())
         if self.path.startswith("/api/update"):
-            d = update.check(force="force" in self.path)
-            d["can_install"] = update.can_self_update()
-            return self._send(200, d)
+            return self._send(200, update.status(force="force" in self.path))
         if self.path.startswith("/api/log"):
             entries, total = applog.since(int(self.path.partition("since=")[2] or 0))
             steps = [{**s, "name": t(s["name"]), "detail": t(s["detail"])} for s in STATE.steps]

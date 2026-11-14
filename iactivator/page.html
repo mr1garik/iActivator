@@ -166,6 +166,7 @@
   .updbar svg { color:var(--brand); flex:none; }
   .updbar span { flex:1; font-size:13px; }
   .updbar button { flex:none; background:var(--brand); color:#fff; border-color:transparent; }
+  .updbar button.ghost { background:transparent; color:var(--brand); border-color:var(--brand); }
   .steps { display:flex; flex-direction:column; gap:10px; }
   .step { display:flex; gap:9px; align-items:center; font-size:14px; }
   .step svg { flex:none; }
@@ -628,7 +629,10 @@ const T_EN = {
   "Есть новая версия": "A new version is available",
   "кнопка «Скачать» вверху на вкладке «Активация».": "the “Download” button at the top of the Activation tab.",
   "Годен": "Pass", "Не годен": "Fail", "Годен с замечаниями": "Pass with notes",
-  "Скачать и установить": "Download & install", "Загрузка": "Downloading", "Установка…": "Installing…",
+  "Скачать и установить": "Download & install",
+  "Не удалось обновить автоматически": "Automatic update failed",
+  "Программа осталась прежней — скачайте новую версию со страницы загрузки.": "The app was not changed — download the new version from the download page.",
+  "Открыть страницу загрузки": "Open download page", "Повторить": "Retry", "Загрузка": "Downloading", "Установка…": "Installing…",
   "Смотрите также": "See also",
   "Открыть iOS Panic Reader на GitHub": "Open iOS Panic Reader on GitHub",
   "iOS Panic Reader — моя вторая программа: читает логи паников iPhone по USB и простыми словами говорит, какая деталь виновата и что делать.":
@@ -792,7 +796,10 @@ const T_UK = {
   "Есть новая версия": "Є нова версія",
   "кнопка «Скачать» вверху на вкладке «Активация».": "кнопка «Завантажити» угорі на вкладці «Активація».",
   "Годен": "Придатний", "Не годен": "Непридатний", "Годен с замечаниями": "Придатний із зауваженнями",
-  "Скачать и установить": "Завантажити та встановити", "Загрузка": "Завантаження", "Установка…": "Встановлення…",
+  "Скачать и установить": "Завантажити та встановити",
+  "Не удалось обновить автоматически": "Не вдалося оновити автоматично",
+  "Программа осталась прежней — скачайте новую версию со страницы загрузки.": "Програма залишилася без змін — завантажте нову версію зі сторінки завантаження.",
+  "Открыть страницу загрузки": "Відкрити сторінку завантаження", "Повторить": "Повторити", "Загрузка": "Завантаження", "Установка…": "Встановлення…",
   "Смотрите также": "Дивіться також",
   "Открыть iOS Panic Reader на GitHub": "Відкрити iOS Panic Reader на GitHub",
   "iOS Panic Reader — моя вторая программа: читает логи паников iPhone по USB и простыми словами говорит, какая деталь виновата и что делать.":
@@ -1187,18 +1194,31 @@ async function checkUpdate(force) {
 async function startUpdateInstall() {
   const btn = $("updInstall");
   if (btn) btn.disabled = true;
-  const res = await api("/api/update/install", {});
-  if (res.error) { if (btn) btn.disabled = false; alert(res.error); return; }
+  let res;
+  try { res = await api("/api/update/install", {}); } catch (e) { res = { error: String(e) }; }
+  if (res.error) return updateFailed(res.error);
   pollUpdateProgress();
 }
 async function pollUpdateProgress() {
   let p;
   try { p = await api("/api/update/progress"); } catch { return; }
   const btn = $("updInstall");
-  if (p.error) { if (btn) { btn.disabled = false; btn.textContent = T("Скачать и установить"); } alert(p.error); return; }
+  if (p.error) return updateFailed(p.error);
   if (btn) btn.textContent = p.done ? T("Установка…") : `${T("Загрузка")}… ${p.pct || 0}%`;
   if (p.done) return;              // the app will close and relaunch itself
   if (p.active) setTimeout(pollUpdateProgress, 500);
+}
+// Whatever goes wrong with the automatic update, the user always gets a way to the
+// download page, so they can install the new version by hand. The program stays as it was.
+function updateFailed(err) {
+  const bar = $("updateBanner");
+  bar.style.display = "";
+  bar.innerHTML = `<svg><use href="#i-download"/></svg><span>${T("Не удалось обновить автоматически")}: ${esc(String(err).replace(/[.\s]+$/, ""))}. `
+    + `${T("Программа осталась прежней — скачайте новую версию со страницы загрузки.")}</span>`
+    + `<button id="updGet">${T("Открыть страницу загрузки")}</button>`
+    + `<button id="updRetry" class="ghost">${T("Повторить")}</button>`;
+  $("updGet").onclick = () => api("/api/update/open", {});
+  $("updRetry").onclick = () => checkUpdate(true);
 }
 
 function updateWifiHint() {

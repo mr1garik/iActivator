@@ -104,6 +104,15 @@ def check(force: bool = False) -> dict:
     return dict(info)
 
 
+def status(force: bool = False) -> dict:
+    """What the update banner shows. Install in place only when the release has the file
+    this program installs; otherwise the banner offers the download page instead of a
+    button that can only fail."""
+    d = check(force)
+    d["can_install"] = can_self_update() and bool(d.get("download"))
+    return d
+
+
 def open_page() -> bool:
     """Open the download page in the default browser."""
     import webbrowser

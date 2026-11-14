@@ -110,6 +110,28 @@ class WindowsUpdate(unittest.TestCase):
         self.assertTrue(update.installed_windows(exe))    # installed: silent update
 
 
+class Banner(unittest.TestCase):
+    def setUp(self):
+        self._orig = (update.check, update.can_self_update)
+        self.addCleanup(lambda: setattr(update, "check", self._orig[0]) or setattr(update, "can_self_update", self._orig[1]))
+        update.can_self_update = lambda: True
+
+    def test_release_without_our_file_offers_the_download_page(self):
+        update.check = lambda force=False: {"available": True, "latest": "9.0", "page": update.RELEASES_PAGE}
+        self.assertFalse(update.status()["can_install"])
+
+    def test_release_with_our_file_installs_in_place(self):
+        update.check = lambda force=False: {"available": True, "latest": "9.0", "download": "https://x/y"}
+        self.assertTrue(update.status()["can_install"])
+
+    def test_page_always_offers_the_download_page_when_an_update_fails(self):
+        page = (ROOT / "iactivator" / "page.html").read_text(encoding="utf-8")
+        fn = page[page.index("function updateFailed("):]
+        fn = fn[:fn.index("\n}\n")]
+        self.assertIn("/api/update/open", fn)
+        self.assertEqual(page.count("alert(p.error)") + page.count("alert(res.error); return; }\n  pollUpdateProgress"), 0)
+
+
 class Installer(unittest.TestCase):
     def setUp(self):
         self.iss = (ROOT / "installer" / "iActivator.iss").read_text(encoding="utf-8")
