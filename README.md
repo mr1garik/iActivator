@@ -122,16 +122,16 @@ The app will not activate an iPhone with Activation Lock (iCloud) enabled: the o
 
 ## Updates
 - On launch the app quietly checks GitHub. If a new version is out, a bar appears at the top of the Activation tab.
-- **One-click auto-update:** press **"Download & install"** — the app downloads the new version, replaces itself and restarts. No manual reinstall.
+- **One-click auto-update:** press **"Download & install"** — the app downloads the new version, checks it, installs it and opens again. This works in the installed app (Windows installer, macOS); the portable Windows version opens the download page instead.
 - Check manually: About → Check for updates.
-- **Coming from v3.0?** Download the new version once from the [Releases page](https://github.com/mr1garik/iActivator/releases/latest) and replace the app. The one-click update in v3.0 is turned off for safety (on macOS it could leave an app that doesn't start); from v3.0.1 on it works again.
+- **Coming from v3.0?** Download the new version once from the [Releases page](https://github.com/mr1garik/iActivator/releases/latest) — on Windows, the installer — and you can delete the old `iActivator.exe`. Your history and settings stay. The one-click update in v3.0 is turned off for safety (on macOS it could leave an app that doesn't start); from v3.0.1 on it works again.
 - Before installing, the download is checked (size and checksum), so a cut-off download can't replace a working app. The previous version is kept in the data folder (`previous-version`) in case you need to go back.
 - An update replaces only the app itself. Device history and settings live in a separate data folder and are never lost on update.
 
 ## Download & build
-- **Just want the app?** Grab the latest `iActivator-windows.exe` (Windows) or `iActivator-macos.zip` (macOS) from the [Releases page](https://github.com/mr1garik/iActivator/releases/latest).
+- **Just want the app?** From the [Releases page](https://github.com/mr1garik/iActivator/releases/latest): **Windows** — `iActivator-windows-setup.exe` (installer: Start menu shortcut, uninstall in Settings → Apps, one-click updates; no administrator rights needed) or `iActivator-windows-portable.zip` (unzip anywhere and run `iActivator.exe`; updated by hand). **macOS** — `iActivator-macos.zip`.
 - **Mac:** `dist/iActivator.app` — move it to Applications. Built locally with `./build_mac.sh`.
-- **Windows:** `iActivator.exe` — built on a Windows machine by double-clicking `build_windows.bat` (needs Python from python.org). You'll also need "Apple Devices" from the Microsoft Store or iTunes to talk to the iPhone.
+- **Windows:** double-click `build_windows.bat` on a Windows machine (needs Python 3.12 from python.org; [Inno Setup 6](https://jrsoftware.org/isdl.php) for the installer). It makes `dist\iActivator-windows-setup.exe` and `dist\iActivator-windows-portable.zip`. You'll also need "Apple Devices" from the Microsoft Store or iTunes to talk to the iPhone.
 - **Build both from GitHub:** upload the folder and run the **build** workflow on the Actions tab — GitHub builds the `.exe` and the Mac version and publishes a release.
 
 The interface opens in its own window (WebKit on Mac, Edge WebView2 on Windows). On Windows the built-in browser runs more economically (lower RAM), the close button minimizes to the tray, and Settings → Startup has a "Launch with Windows" option. On macOS there are "Show window" and "Quit" items in the menu bar. The window fits the screen (no overflow at 125–150% scaling) and remembers its size and position.

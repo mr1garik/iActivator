@@ -1,4 +1,5 @@
 """Tests for the self-update safety checks. Run: python -m unittest discover tests"""
+import base64
 import hashlib
 import os
 import shutil
@@ -87,12 +88,46 @@ class VerifyDownload(unittest.TestCase):
             update._verify_download(p, None, None)
 
 
-class WindowsHelper(unittest.TestCase):
-    def test_script_is_plain_ascii_without_paths(self):
-        update._WIN_HELPER.encode("ascii")  # no user paths inside, so no code-page trouble
-        self.assertIn('move /y "%~1" "%~2"', update._WIN_HELPER)
-        self.assertNotIn("timeout", update._WIN_HELPER)  # does not work in a detached process
-        self.assertIn("if %N% lss 60 goto wait", update._WIN_HELPER)  # the retry loop is bounded
+class WindowsUpdate(unittest.TestCase):
+    def test_silent_installer_runs_after_the_app_exits(self):
+        setup = Path("C:/Users/Ігор O'Neil/AppData/Local/Temp/iactivator-update-x/iActivator-windows-setup.exe")
+        cmd = update.windows_update_command(setup, 4242)
+        self.assertEqual(cmd[0], "powershell")
+        script = base64.b64decode(cmd[-1]).decode("utf-16-le")
+        self.assertIn("Wait-Process -Id 4242", script)
+        self.assertIn("'C:\\Users\\Ігор O''Neil\\AppData\\Local\\Temp\\iactivator-update-x\\iActivator-windows-setup.exe'"
+                      if os.sep == "\\" else "Ігор O''Neil", script)
+        for arg in ("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"):
+            self.assertIn(f"'{arg}'", script)
+
+    def test_installed_or_portable(self):
+        d = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        exe = d / "iActivator.exe"
+        exe.write_bytes(b"MZ")
+        self.assertFalse(update.installed_windows(exe))   # portable: updated by hand
+        (d / "unins000.exe").write_bytes(b"MZ")
+        self.assertTrue(update.installed_windows(exe))    # installed: silent update
+
+
+class Installer(unittest.TestCase):
+    def setUp(self):
+        self.iss = (ROOT / "installer" / "iActivator.iss").read_text(encoding="utf-8")
+
+    def test_output_is_the_release_file_the_app_looks_for(self):
+        self.assertIn(f"OutputBaseFilename={Path(update.ASSET_WINDOWS).stem}", self.iss)
+        workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text()
+        for name in (update.ASSET_WINDOWS, update.ASSET_WINDOWS_PORTABLE, update.ASSET_MACOS):
+            self.assertIn(name, workflow)
+
+    def test_installs_what_build_py_makes_for_the_current_user(self):
+        self.assertIn(r'Source: "..\dist\iActivator\*"', self.iss)
+        self.assertIn("PrivilegesRequired=lowest", self.iss)  # no administrator prompt for updates
+        self.assertIn("AppId={{9B4A6E2C-3F1D-4C8E-A7B5-6D2E1F0C9A31}", self.iss)  # never change: links updates
+
+    def test_restarts_the_app_after_a_silent_update(self):
+        self.assertIn("Flags: nowait skipifnotsilent", self.iss)
+        self.assertIn("Flags: nowait postinstall skipifsilent", self.iss)
 
 
 @unittest.skipIf(sys.platform == "win32" or not shutil.which("bash"), "needs bash")

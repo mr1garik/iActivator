@@ -9,10 +9,10 @@ Fails quietly when offline.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
-import shutil
 import ssl
 import subprocess
 import sys
@@ -62,7 +62,10 @@ def _ver_tuple(s: str) -> tuple:
 # folders with non-Latin names. Releases from v3.0.1 on use new names, so a v3.0
 # install cannot find them and never runs that installer: v3.0 users update once by
 # downloading the new version from the releases page.
-ASSET_WINDOWS = "iActivator-windows.exe"
+# On Windows the app is installed by an installer (iActivator-windows-setup.exe, per user,
+# no administrator rights); the portable variant is a zipped folder and is updated by hand.
+ASSET_WINDOWS = "iActivator-windows-setup.exe"
+ASSET_WINDOWS_PORTABLE = "iActivator-windows-portable.zip"
 ASSET_MACOS = "iActivator-macos.zip"
 
 
@@ -117,9 +120,17 @@ def open_page() -> bool:
 _prog = {"active": False, "pct": 0, "done": False, "error": ""}
 
 
+def installed_windows(exe: Path | None = None) -> bool:
+    """Installed with the installer (its uninstaller sits next to the program), not portable."""
+    exe = exe or Path(sys.executable)
+    return (exe.resolve().parent / "unins000.exe").exists()
+
+
 def can_self_update() -> bool:
-    """True only in the frozen (PyInstaller) build on Windows or macOS."""
-    return bool(getattr(sys, "frozen", False)) and sys.platform in ("win32", "darwin")
+    """The packaged app on macOS, or installed (not portable) on Windows."""
+    if not getattr(sys, "frozen", False):
+        return False
+    return sys.platform == "darwin" or (sys.platform == "win32" and installed_windows())
 
 
 def install_progress() -> dict:
@@ -263,22 +274,6 @@ fi
 open "$APP"
 """
 
-_WIN_HELPER = (
-    "@echo off\r\n"
-    "rem args: new_exe current_exe\r\n"
-    "setlocal\r\n"
-    "set /a N=0\r\n"
-    ":wait\r\n"
-    "ping -n 2 127.0.0.1 >nul\r\n"            # ~1 s; "timeout" does not work without a console
-    'move /y "%~1" "%~2" >nul 2>&1 && goto done\r\n'
-    "set /a N+=1\r\n"
-    "if %N% lss 60 goto wait\r\n"             # give up after a minute: the old program is still in place
-    ":done\r\n"
-    'start "" "%~2"\r\n'
-    'del "%~f0"\r\n'
-)
-
-
 def _check_extracted_app(folder: Path) -> Path:
     """The unpacked .app bundle, if it can actually start: its main program must be executable."""
     apps = [p for p in folder.glob("*.app") if p.is_dir()] if folder.is_dir() else []
@@ -311,15 +306,23 @@ def _install_macos(zip_path: Path) -> None:
                      start_new_session=True)
 
 
-def _install_windows(exe_path: Path) -> None:
-    cur = Path(sys.executable).resolve()
-    backup = backup_dir() / cur.name
-    try:
-        shutil.copy2(cur, backup)  # a running .exe can be read, so keep the current version first
-        applog.add(t("Предыдущая версия сохранена в: {path}", path=backup))
-    except OSError as e:
-        applog.add(t("⚠ Не удалось сохранить предыдущую версию: {e}", e=e))
-    helper = exe_path.parent / "update.bat"
-    helper.write_text(_WIN_HELPER, encoding="ascii", newline="")
-    DETACHED = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
-    subprocess.Popen(["cmd", "/c", str(helper), str(exe_path), str(cur)], creationflags=DETACHED, close_fds=True)
+# Windows: the new installer runs silently once this program has exited (so no file is
+# in use), keeps the install folder and shortcuts, and starts the app again ([Run] in
+# installer/iActivator.iss). Passed as an encoded command: paths with spaces or a
+# Cyrillic user name cannot break it.
+_SETUP_ARGS = ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LOG"]
+
+
+def windows_update_command(setup: Path, pid: int) -> list[str]:
+    path = "'" + str(setup).replace("'", "''") + "'"
+    args = ",".join(f"'{a}'" for a in _SETUP_ARGS)
+    script = (f"Wait-Process -Id {pid} -Timeout 60 -ErrorAction SilentlyContinue; "
+              f"Start-Process -FilePath {path} -ArgumentList {args}")
+    encoded = base64.b64encode(script.encode("utf-16-le")).decode()
+    return ["powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", encoded]
+
+
+def _install_windows(setup_path: Path) -> None:
+    applog.add(t("Обновление установится и программа откроется снова через несколько секунд."))
+    flags = 0x08000000 | 0x00000200  # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP: outlives this process
+    subprocess.Popen(windows_update_command(setup_path, os.getpid()), creationflags=flags, close_fds=True)
