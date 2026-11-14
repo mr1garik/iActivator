@@ -18,6 +18,9 @@ LEVELS = {"debug": "DEBUG", "info": "INFO ", "ok": "OK   ", "warn": "WARN ", "er
 
 _lock = threading.Lock()
 _entries: list[dict] = []
+_dropped = 0         # entries trimmed from memory; positions handed to the window stay valid
+MAX_IN_MEMORY = 5000  # older entries stay in the daily files
+KEEP_AFTER_TRIM = 4000
 
 
 def logs_dir():
@@ -37,11 +40,16 @@ def _guess_level(text: str) -> str:
 
 
 def add(text: str, serial: str = "", level: str = "") -> None:
+    global _dropped
     text = t(text)
     now = datetime.now()
     e = {"time": now.strftime("%H:%M:%S"), "level": level or _guess_level(text), "serial": serial or "", "text": text}
     with _lock:
         _entries.append(e)
+        if len(_entries) > MAX_IN_MEMORY:
+            cut = len(_entries) - KEEP_AFTER_TRIM
+            del _entries[:cut]
+            _dropped += cut
         try:
             with open(logs_dir() / f"{now:%Y-%m-%d}.log", "a", encoding="utf-8") as f:
                 f.write(f"{now:%Y-%m-%d %H:%M:%S} {LEVELS[e['level']]} {e['serial'] or '-':<14} {text}\n")
@@ -55,8 +63,9 @@ def exception(e: BaseException, serial: str = "") -> None:
 
 
 def since(n: int) -> tuple[list[dict], int]:
+    """Entries after position n (as returned by a previous call) and the new position."""
     with _lock:
-        return _entries[n:], len(_entries)
+        return _entries[max(n - _dropped, 0):], _dropped + len(_entries)
 
 
 def cleanup() -> None:

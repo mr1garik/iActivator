@@ -348,6 +348,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True})
 
         if self.path == "/api/history/open":
+            history.flush_csv()
             _open_folder(str(history.csv_path() if history.csv_path().exists() else core.app_data_dir()))
             return self._send(200, {"ok": True})
         if self.path == "/api/reports/open":
