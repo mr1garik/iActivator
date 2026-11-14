@@ -56,8 +56,18 @@ def _ver_tuple(s: str) -> tuple:
     return tuple(out)
 
 
+# Release file names. Up to v3.0 they were "iActivator.exe" and "iActivator-mac.zip".
+# The installer in v3.0 unpacks the Mac archive in a way that loses the executable
+# flag and symlinks (the updated app would not start) and may hang on Windows user
+# folders with non-Latin names. Releases from v3.1 on use new names, so a v3.0
+# install cannot find them and never runs that installer: v3.0 users update once by
+# downloading the new version from the releases page.
+ASSET_WINDOWS = "iActivator-windows.exe"
+ASSET_MACOS = "iActivator-macos.zip"
+
+
 def _asset_name() -> str:
-    return "iActivator.exe" if sys.platform == "win32" else "iActivator-mac.zip"
+    return ASSET_WINDOWS if sys.platform == "win32" else ASSET_MACOS
 
 
 def check(force: bool = False) -> dict:
@@ -269,12 +279,26 @@ _WIN_HELPER = (
 )
 
 
+def _check_extracted_app(folder: Path) -> Path:
+    """The unpacked .app bundle, if it can actually start: its main program must be executable."""
+    apps = [p for p in folder.glob("*.app") if p.is_dir()] if folder.is_dir() else []
+    if not apps:
+        raise UpdateError(t("Скачанный архив повреждён."))
+    app = apps[0]
+    macos = app / "Contents" / "MacOS"
+    if not macos.is_dir() or not any(f.is_file() and os.access(f, os.X_OK) for f in macos.iterdir()):
+        raise UpdateError(t("Обновление распаковалось неправильно — программа не тронута."))
+    return app
+
+
 def _install_macos(zip_path: Path) -> None:
     app = _current_app_macos()
     extract = zip_path.parent / "extracted"
-    with zipfile.ZipFile(zip_path) as z:
-        z.extractall(extract)
-    new_app = next(p for p in extract.rglob("*.app") if p.is_dir())
+    # ditto (the tool Finder uses) keeps the executable flags, symlinks and extended
+    # attributes an .app bundle needs; Python's zipfile drops all of them.
+    subprocess.run(["ditto", "-x", "-k", str(zip_path), str(extract)], check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    new_app = _check_extracted_app(extract)
     backup = backup_dir() / app.name
     # The helper waits for us to quit, copies the new app next to the old one, moves
     # the old one to the backup folder and only then puts the new one in place; if

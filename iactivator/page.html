@@ -806,8 +806,15 @@ function applyLang(lang) {
   refreshDynamic();
 }
 const CHECK_DEFAULT = "Батарея, зарядка, Wi-Fi, Bluetooth, модем, память, журналы сбоев за 30 дней, Локатор и MDM. iPhone должен быть разблокирован.";
-async function refreshDynamic() {
+// Parts of the shell that translateStatic() skips (their text is set from code). They must not
+// depend on the device list arriving: without the Apple driver it never does.
+function translateShell() {
+  $("status").title = T("Открыть журнал");
+  if (!$("device").value) fill($("device"), [[T("Подключите iPhone кабелем…"), ""]]);
   setConn($("device").value ? $("device").selectedOptions[0]?.textContent : "");
+}
+async function refreshDynamic() {
+  translateShell();
   const st = $("status").textContent.trim();
   if (st === "Готово" || st === "Done") $("status").textContent = T("Готово");
   try {  // re-fetch so language/region/Wi-Fi-security names in the dropdowns switch language too
@@ -1295,6 +1302,7 @@ async function init() {
   $("uiLang").onchange = async () => { const v = $("uiLang").value; await api("/api/settings/ui", { lang: v }); applyLang(v); };
   document.documentElement.lang = LANG;
   if (LANG !== "ru") { translateStatic(); $("status").textContent = T("Готово"); }
+  translateShell();
   renderAbout();              // re-render with the final language (settings may differ from the cached one)
   showSupport(aboutData);
   $("checkResults").textContent = T(CHECK_DEFAULT);
