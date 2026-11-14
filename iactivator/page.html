@@ -925,7 +925,10 @@ function logRow(e) {
 function renderLog(fresh) {
   const box = $("log");
   const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
-  if (fresh) box.insertAdjacentHTML("beforeend", fresh.filter(logVisible).map(logRow).join(""));
+  if (fresh) {
+    box.insertAdjacentHTML("beforeend", fresh.filter(logVisible).map(logRow).join(""));
+    while (box.children.length > 3000) box.firstElementChild.remove();  // the window shows the latest; files keep all
+  }
   else box.innerHTML = logEntries.filter(logVisible).slice(-3000).map(logRow).join("");
   $("logEmpty").style.display = box.children.length ? "none" : "";
   $("logEmpty").textContent = logEntries.length ? T("Нет записей по этому фильтру") : T("Журнал пуст");
@@ -1007,7 +1010,14 @@ async function fixDriver(action) {
   pollDevices(true);
 }
 
-async function pollDevices(full) {
+// One device poll at a time: if the Apple service is slow, polls must not pile up.
+let devicePoll = null;
+function pollDevices(full) {
+  if (devicePoll) return devicePoll;
+  devicePoll = _pollDevices(full).finally(() => { devicePoll = null; });
+  return devicePoll;
+}
+async function _pollDevices(full) {
   let res;
   try { res = await api("/api/devices" + (full ? "?full=1" : "")); } catch { return; }
   if (res.error) { driverHint(true); return; }

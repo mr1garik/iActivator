@@ -107,5 +107,29 @@ class Queue(unittest.TestCase):
         self.assertTrue(wait_for(lambda: not self.state.busy))
 
 
+class TimeLimit(unittest.TestCase):
+    def test_a_hanging_operation_is_cancelled(self):
+        state = webui.State()
+        cancelled = threading.Event()
+
+        async def hangs():
+            try:
+                await asyncio.sleep(30)
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+
+        started = time.monotonic()
+        with self.assertRaises(TimeoutError):
+            state.run(hangs(), timeout=0.3)
+        self.assertLess(time.monotonic() - started, 3)
+        self.assertTrue(cancelled.wait(2))  # the operation itself was stopped, not left running
+
+    def test_normal_operation_returns_its_result(self):
+        async def quick():
+            return 42
+        self.assertEqual(webui.State().run(quick(), timeout=5), 42)
+
+
 if __name__ == "__main__":
     unittest.main()
