@@ -182,6 +182,31 @@ def add_event(serial: str, action: str, result: str, detail: str = "") -> None:
         _save(data)
 
 
+def parts_baseline(device_id: str) -> tuple:
+    """Part serial numbers recorded the first time this iPhone was checked, and when."""
+    with _lock:
+        p = (_load().get(device_id) or {}).get("parts")
+        return (dict(p["serials"]), p.get("time")) if p and p.get("serials") else (None, None)
+
+
+def record_parts(device_id: str, serials: dict) -> None:
+    """The first record becomes the reference. Later checks only add parts that were not
+    readable before; a recorded serial number is never overwritten, so a replaced part keeps
+    being reported."""
+    if not device_id or not serials:
+        return
+    with _lock:
+        data = _load()
+        d = _entry(data, device_id)
+        p = d.get("parts")
+        if not p or not p.get("serials"):
+            d["parts"] = {"time": _now(), "serials": dict(serials)}
+        else:
+            for k, v in serials.items():
+                p["serials"].setdefault(k, v)
+        _save(data)
+
+
 def summary() -> dict:
     with _lock:
         # A copy, because the window serialises it after the lock is released. Event entries

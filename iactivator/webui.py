@@ -15,6 +15,7 @@ import sys
 import threading
 import time
 import webbrowser
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -154,6 +155,22 @@ async def _with_activator(serial, fn, action, detail=""):
     finally:
         await act.close()
         await core.CONNECTIONS.drop(serial)
+
+
+def _parts_checks(serial: str, parts: dict) -> list:
+    """Compare the parts with the first check of this iPhone, then remember any new ones."""
+    if "serials" not in parts:
+        return []  # diagnostics were not readable (locked iPhone): nothing to say about parts
+    baseline, since = history.parts_baseline(serial)
+    when = None
+    if since:
+        try:
+            when = datetime.strptime(since, "%Y-%m-%d %H:%M:%S").strftime("%d.%m.%Y")
+        except ValueError:
+            when = since
+    checks = core.parts_checks(parts["serials"], baseline, when)
+    history.record_parts(serial, parts["serials"])
+    return checks
 
 
 def _record_checks(serial: str, action: str, results: list) -> None:
@@ -378,7 +395,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/check":
             STATE.log("Диагностика: проверяю…", serial)
             try:
-                res = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy))
+                parts: dict = {}
+                res = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy, parts_out=parts))
+                res += _parts_checks(serial, parts)
                 _record_checks(serial, "Диагностика", res)
                 return self._send(200, res)
             except Exception as e:
@@ -388,7 +407,9 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 info = STATE.run(core.get_device_details(serial))
                 history.update_device(info)
-                results = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy))
+                parts = {}
+                results = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy, parts_out=parts))
+                results += _parts_checks(serial, parts)
                 _record_checks(serial, "Диагностика", results)
                 path = report.build_pdf(info, results, STATE.steps, lang=i18n.get_lang())
                 history.add_event(serial, "PDF-отчёт", "info", path.name)
