@@ -48,6 +48,7 @@ Activate and set up an iPhone over USB in one click — activation, language, re
 - ⏭️ **Skips the Setup Assistant** screens (supervised mode, like Apple Configurator)
 - 📶 **Wi-Fi via a profile**, read back from the device to confirm it applied — fixes the usual 3uTools Wi-Fi failures
 - 🩺 **Health check + PDF report** — battery, Find My, MDM, 30-day crash logs, with a clear **Pass / Fail** verdict
+- 📦 **Several iPhones in a row** — with "Auto on connect", every newly connected iPhone is queued and handled in turn; activated or locked phones are skipped
 - 🔄 **Built-in auto-update** — one-click "Download & install", no manual reinstall
 - 🌍 **Trilingual interface** — English, Ukrainian, Russian
 - 🖥️ **Windows & macOS** — free and open-source

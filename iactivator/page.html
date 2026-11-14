@@ -271,6 +271,7 @@
       <h2>Активация</h2>
       <div id="steps" class="steps"></div>
     </div>
+    <div id="queueInfo" class="hint" style="display:none;margin:6px 4px 0"></div>
   </section>
 
   <!-- ======== Wi-Fi ======== -->
@@ -655,6 +656,9 @@ const T_EN = {
   "Показаны последние": "Showing the latest",
   "из": "of",
   "Остальные можно найти через поиск.": "Use the search to find the rest.",
+  // several iPhones
+  "Сейчас": "Now",
+  "В очереди": "Waiting",
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -813,6 +817,9 @@ const T_UK = {
   "Показаны последние": "Показано останні",
   "из": "з",
   "Остальные можно найти через поиск.": "Решту можна знайти через пошук.",
+  // several iPhones
+  "Сейчас": "Зараз",
+  "В очереди": "У черзі",
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
 function cap(s) { return LANG === "en" && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
@@ -822,7 +829,7 @@ function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" 
 const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",
   "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult",
   "status", "connText", "ver", "aboutVer", "netCount", "histCount", "device", "language", "region",
-  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult"]);
+  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo"]);
 const _i18nText = new WeakMap(), _i18nAttr = new WeakMap();
 function _skip(el) { for (let n = el; n; n = n.parentElement) if (n.id && I18N_SKIP.has(n.id)) return true; return false; }
 function translateStatic() {
@@ -1006,8 +1013,18 @@ async function pollDevices(full) {
   if (res.error) { driverHint(true); return; }
   driverHint(!res.length);
   const cur = $("device").value;
-  const fresh = res.find(d => !known.has(d.serial));
+  const freshAll = res.filter(d => !known.has(d.serial));
+  const fresh = freshAll[0];
   known = new Set(res.map(d => d.serial));
+  if ($("auto").checked) {
+    // Auto mode: every newly connected phone is queued and handled in turn; the program
+    // itself skips phones that are already activated or locked.
+    for (const d of freshAll) {
+      api("/api/run", { ...form(), serial: d.serial, queue: true }).then(r => {
+        if (r && r.error) addLog("❌ " + r.error, "error");
+      }).catch(() => {});
+    }
+  }
   if (!res.length) {
     fill($("device"), [[T("Подключите iPhone кабелем…"), ""]]);
     setConn("");
@@ -1030,13 +1047,9 @@ async function onDevice(isNew) {
   $("checkResults").className = "empty";
   $("checkResults").textContent = T("Нажмите «Проверить».");
   await loadInfo(isNew);
-  const locks = await loadLocks(isNew);
+  await loadLocks(isNew);
   loadHistory();
   if (isNew) addLog(T("Данные устройства прочитаны"), "debug");
-  if (isNew && $("auto").checked && info && info.activation === "Unactivated") {
-    if (locks.some(r => r.status === "bad")) addLog(T("⛔ Авто-режим остановлен: устройство заблокировано"), "error");
-    else { addLog(T("Авто-режим: запускаю активацию")); job("/api/run", form()); }
-  }
 }
 
 async function loadInfo(record) {
@@ -1166,6 +1179,14 @@ function updateWifiHint() {
 
 const STEP_ICONS = { ok: ["i-check", "var(--good)"], error: ["i-x", "var(--danger)"], warn: ["i-alert", "var(--warn)"],
                      run: ["i-refresh", "var(--accent)"], pending: ["i-dot", "var(--muted)"], skipped: ["i-dot", "var(--muted)"] };
+function renderQueue(res) {
+  const box = $("queueInfo");
+  const parts = [];
+  if (res.current) parts.push(`${T("Сейчас")}: ${esc(res.current)}`);
+  if (res.queue && res.queue.length) parts.push(`${T("В очереди")} (${res.queue.length}): ${res.queue.map(esc).join(", ")}`);
+  box.style.display = parts.length && (res.queue || []).length ? "" : "none";
+  box.innerHTML = parts.join(" · ");
+}
 function renderSteps(steps) {
   const card = $("stepsCard");
   if (!steps || !steps.length) { card.style.display = "none"; return; }
@@ -1309,6 +1330,7 @@ async function pollLog() {
     }
     logNext = res.next;
     renderSteps(res.steps);
+    renderQueue(res);
     for (const id of ["start", "wifiOnly", "erase"]) $(id).disabled = res.busy;
     $("bar").classList.toggle("busy", res.busy);
     if (wasBusy && !res.busy) { pollDevices(true); loadHistory(); }  // job finished: refresh state
