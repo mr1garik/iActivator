@@ -23,7 +23,7 @@ jobs:
         run: python -m unittest discover tests
       - name: Build (Windows)
         if: runner.os == 'Windows'
-        run: pyinstaller --noconfirm --onefile --windowed --name iActivator --icon assets/icon.ico --collect-all pymobiledevice3 --collect-all webview --collect-submodules keyring --collect-submodules pystray --collect-submodules PIL --collect-data fpdf --add-data "iactivator/page.html;iactivator" main.py
+        run: python build.py
       - name: Name the Windows release file
         if: runner.os == 'Windows'
         shell: bash
@@ -31,7 +31,7 @@ jobs:
       - name: Build (macOS)
         if: runner.os == 'macOS'
         run: |
-          pyinstaller --noconfirm --windowed --name iActivator --icon assets/icon.icns --collect-all pymobiledevice3 --collect-all webview --collect-submodules keyring --collect-data fpdf --add-data "iactivator/page.html:iactivator" main.py
+          python build.py
           cd dist && ditto -c -k --keepParent iActivator.app iActivator-macos.zip
       - uses: actions/upload-artifact@v7
         with:
