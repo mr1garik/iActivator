@@ -532,6 +532,7 @@ def _redact_ids(text: str, idents: set) -> str:
     for ident in sorted(idents, key=len, reverse=True):
         text = text.replace(ident, "***")
     text = re.sub(r"\b\d{14,15}\b", "***", text)                       # IMEI
+    text = re.sub(r"\b89\d{16,20}F?\b", "***", text)                   # ICCID (SIM card number)
     text = re.sub(r"\b[0-9a-fA-F]{40}\b", "***", text)                 # old-style UDID
     text = re.sub(r"\b[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}\b", "***", text)  # new-style UDID
     return text

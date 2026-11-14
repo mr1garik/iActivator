@@ -395,6 +395,63 @@ async def _panic_checks(lockdown, days: int = 30) -> list[dict]:
     return [_check("Перезагрузки (panic)", status, detail)]
 
 
+# SIM states reported by the iPhone (CoreTelephony kCTSIMSupportSIMStatus…).
+_SIM_CARRIER_LOCK = ("OperatorLocked", "NetworkLocked", "OperatorSubsetLocked",
+                     "ServiceProviderLocked", "CorporateLocked")
+
+
+def carrier_name(v: dict) -> Optional[str]:
+    """Carrier from the carrier bundle the iPhone loaded for its SIM ("com.apple.Kyivstar_ua" -> "Kyivstar")."""
+    import re
+    for b in v.get("CarrierBundleInfoArray") or []:
+        bid = b.get("CFBundleIdentifier") if isinstance(b, dict) else None
+        if bid and bid.startswith("com.apple.") and bid.split(".")[-1] not in ("Unknown", "Default"):
+            return re.sub(r"_[a-z]{2}$", "", bid.split(".")[-1]).replace("_", " ")
+    return None
+
+
+def sim_checks(v: dict) -> list[dict]:
+    """SIM card and carrier lock, from the values the iPhone reports over USB.
+
+    Whether a phone is locked to a carrier cannot be read over USB directly. What can be
+    seen: with a SIM of a carrier it is not allowed to use, a locked iPhone reports the
+    SIM as "operator locked". So the answer is certain only for that case."""
+    if not v.get("TelephonyCapability"):
+        return []
+    status = str(v.get("SIMStatus") or "").replace("kCTSIMSupportSIMStatus", "")
+    tray = str(v.get("SIMTrayStatus") or "").replace("kCTSIMSupportSIMTray", "")
+    iccid = str(v.get("IntegratedCircuitCardIdentity") or "")
+    mcc, mnc = v.get("MobileSubscriberCountryCode"), v.get("MobileSubscriberNetworkCode")
+    carrier = carrier_name(v) or (f"MCC {mcc} / MNC {mnc}" if mcc and mnc else None)
+    lock_name = "Привязка к оператору"
+    no_sim = status == "NotInserted" or "NotInserted" in tray or "NoSIM" in tray or (
+        not iccid and status in ("", "Ready"))  # "Ready" alone is also reported without a SIM
+
+    if no_sim:
+        return [_check("SIM-карта", "info", "Не вставлена"),
+                _check(lock_name, "info", "Вставьте SIM-карту, чтобы проверить привязку к оператору")]
+    if status in _SIM_CARRIER_LOCK:
+        return [_check("SIM-карта", "bad", "iPhone не принимает эту SIM ({carrier})", carrier=carrier or "—"),
+                _check(lock_name, "bad", "Похоже, iPhone привязан к другому оператору (SIM-lock). "
+                                         "Проверьте по IMEI у оператора или продавца")]
+    if status == "Ready":
+        tail = ("…" + iccid[-4:]) if len(iccid) >= 4 else "—"
+        return [_check("SIM-карта", "ok", "Работает · {carrier} · ICCID {tail}", carrier=carrier or "—", tail=tail),
+                _check(lock_name, "info", "С этой SIM телефон работает. Полностью проверить привязку по USB нельзя: "
+                                          "вставьте SIM другого оператора — если iPhone привязан, здесь будет предупреждение")]
+    known = {
+        "PINLocked": ("warn", "Заблокирована PIN-кодом — введите PIN на iPhone"),
+        "PUKLocked": ("bad", "Заблокирована PUK-кодом — нужен PUK от оператора"),
+        "NotReady": ("warn", "Ещё не готова — подождите немного и проверьте снова"),
+        "MemoryFailure": ("bad", "Ошибка SIM-карты — проверьте SIM или лоток"),
+        "Blacklisted": ("bad", "SIM-карта заблокирована оператором"),
+        "FixedDialingLocked": ("warn", "Включён режим разрешённых номеров (FDN)"),
+    }
+    level, detail = known.get(status, ("info", ""))
+    return [_check("SIM-карта", level, detail) if detail else
+            _check("SIM-карта", "info", "Состояние: {state}", state=status or "—")]
+
+
 def ios_major(version: Optional[str]) -> int:
     """Major iOS version from ProductVersion ("7.1.2" -> 7); 0 when unknown."""
     try:
@@ -577,6 +634,7 @@ async def run_health_check(serial: str, check_activation: bool = True) -> list[d
                 results.append(_check("Модем", "bad", "IMEI не читается"))
             else:
                 results.append(_check("Модем", "ok", "прошивка {fw}", fw=v.get("BasebandVersion")))
+            results.extend(sim_checks(v))
 
         # Storage
         try:
