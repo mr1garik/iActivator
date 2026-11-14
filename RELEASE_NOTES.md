@@ -1,17 +1,12 @@
-## iActivator 3.0.1
+## iActivator 3.0.2
 
 **Download:** Windows — `iActivator-windows-setup.exe` (installer, recommended) or `iActivator-windows-portable.zip` (no installation). macOS — `iActivator-macos.zip`.
 
-**Coming from 3.0?** Download and install this version by hand once. From 3.0.1 on, updates install themselves. Your history and settings are kept.
+**Have 3.0.1?** Press "Download & install" in the app — the update installs itself. **Coming from 3.0?** Download and install this version by hand once. Your history and settings are kept.
 
 ### What's new
-- Windows installer: the app starts much faster and appears in the Start menu. No administrator rights needed.
-- The app is half the size.
-- Full English and Ukrainian translation.
-- SIM and carrier-lock check, replaced-parts check.
-- Several iPhones at once: they are queued and processed one by one.
-- Windows: Apple driver check and one-click repair.
-- New colour themes.
-- Safer updates: the download is checked before installing, and the previous version is kept on macOS.
+- History: save a small TXT file for each phone (details, part serial numbers, all events), or all phones at once.
+- History: "Clear files" shows how much space the TXT files and PDF reports take and deletes them. The history itself stays, so any file can be made again.
+- Updates: if the automatic update cannot install, the app explains why and offers the download page and a retry. Nothing is changed in that case.
 
 iActivator activates and sets up iPhones through Apple's servers. It does not bypass iCloud Activation Lock.
