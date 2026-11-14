@@ -166,6 +166,8 @@
   .updbar svg { color:var(--brand); flex:none; }
   .updbar span { flex:1; font-size:13px; }
   .updbar button { flex:none; background:var(--brand); color:#fff; border-color:transparent; }
+  .files-row { align-items:center; }
+  .files-row #filesUsage { flex:1; font-size:12px; }
   .updbar button.ghost { background:transparent; color:var(--brand); border-color:var(--brand); }
   .steps { display:flex; flex-direction:column; gap:10px; }
   .step { display:flex; gap:9px; align-items:center; font-size:14px; }
@@ -343,6 +345,11 @@
         <input type="text" id="histSearch" placeholder="Поиск по серийному номеру, IMEI или модели">
         <button id="histOpen" title="Файл со всей историей — открывается в Excel"><svg><use href="#i-folder"/></svg>Открыть файл</button>
         <button id="reportsOpen" title="Папка с PDF-отчётами"><svg><use href="#i-file"/></svg>Отчёты</button>
+      </div>
+      <div class="row files-row">
+        <button id="txtAll" title="По отдельному TXT-файлу на каждый телефон: данные, детали и все события"><svg><use href="#i-file"/></svg>Все в TXT</button>
+        <span id="filesUsage" class="empty"></span>
+        <button id="filesClear" class="ghost-danger" title="Удалить TXT-файлы и PDF-отчёты. История остаётся — файлы можно сделать снова">Очистить файлы</button>
       </div>
       <table>
         <thead><tr><th>Модель</th><th>Серийный №</th><th>IMEI</th><th>Последнее действие</th></tr></thead>
@@ -550,6 +557,13 @@ const T_EN = {
   "Модель": "Model", "Серийный №": "Serial no.", "Последнее действие": "Last action",
   "Пока пусто — устройства появятся здесь после подключения.": "Empty for now — devices will appear here once connected.",
   "Ничего не найдено": "Nothing found", "Удалить из истории": "Delete from history", "Событий нет": "No events",
+  "Сохранить TXT": "Save TXT", "Все в TXT": "All to TXT", "Очистить файлы": "Clear files",
+  "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
+  "Удалить TXT-файлы и PDF-отчёты. История остаётся — файлы можно сделать снова": "Delete the TXT files and PDF reports. The history stays — the files can be made again",
+  "Файлов TXT и PDF": "TXT and PDF files", "Файлов TXT и PDF нет": "No TXT or PDF files",
+  "Удалить TXT-файлы и PDF-отчёты": "Delete the TXT files and PDF reports",
+  "История устройств останется — файлы можно сделать снова.": "The device history stays — the files can be made again.",
+  "Удалено файлов": "Files deleted",
   // journal
   "Какие записи показывать": "Which entries to show", "Основное": "Main",
   "Только ошибки и замечания": "Errors and warnings only",
@@ -724,6 +738,13 @@ const T_UK = {
   "Модель": "Модель", "Серийный №": "Серійний №", "Последнее действие": "Остання дія",
   "Пока пусто — устройства появятся здесь после подключения.": "Поки порожньо — пристрої з'являться тут після підключення.",
   "Ничего не найдено": "Нічого не знайдено", "Удалить из истории": "Видалити з історії", "Событий нет": "Подій немає",
+  "Сохранить TXT": "Зберегти TXT", "Все в TXT": "Усі в TXT", "Очистить файлы": "Очистити файли",
+  "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
+  "Удалить TXT-файлы и PDF-отчёты. История остаётся — файлы можно сделать снова": "Видалити TXT-файли та PDF-звіти. Історія залишається — файли можна зробити знову",
+  "Файлов TXT и PDF": "Файлів TXT і PDF", "Файлов TXT и PDF нет": "Файлів TXT і PDF немає",
+  "Удалить TXT-файлы и PDF-отчёты": "Видалити TXT-файли та PDF-звіти",
+  "История устройств останется — файлы можно сделать снова.": "Історія пристроїв залишиться — файли можна зробити знову.",
+  "Удалено файлов": "Видалено файлів",
   "Какие записи показывать": "Які записи показувати", "Основное": "Основне",
   "Только ошибки и замечания": "Лише помилки та зауваження",
   "Подробно (с технической информацией)": "Докладно (з технічною інформацією)",
@@ -855,7 +876,7 @@ function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" 
 const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",
   "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult",
   "status", "connText", "ver", "aboutVer", "netCount", "histCount", "device", "language", "region",
-  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo"]);
+  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage"]);
 const _i18nText = new WeakMap(), _i18nAttr = new WeakMap();
 function _skip(el) { for (let n = el; n; n = n.parentElement) if (n.id && I18N_SKIP.has(n.id)) return true; return false; }
 function translateStatic() {
@@ -1317,7 +1338,29 @@ async function loadHistory() {
   $("sActivated").textContent = st.activated; $("sFaulty").textContent = st.faulty;
   $("histCount").textContent = st.total || "";
   renderHistory();
+  loadFilesUsage();
 }
+async function loadFilesUsage() {
+  try {
+    const u = await api("/api/files/usage");
+    $("filesUsage").textContent = u.files ? `${T("Файлов TXT и PDF")}: ${u.files} · ${u.size}` : T("Файлов TXT и PDF нет");
+    $("filesClear").disabled = !u.files;
+  } catch {}
+}
+$("txtAll").onclick = async () => {
+  if (!hist || !hist.stats.total) return alert(T("Пока пусто — устройства появятся здесь после подключения."));
+  const res = await api("/api/history/txt", { all: true });
+  if (res.error) alert(res.error);
+  loadFilesUsage();
+};
+$("filesClear").onclick = async () => {
+  const u = await api("/api/files/usage");
+  if (!u.files) return loadFilesUsage();
+  if (!confirm(`${T("Удалить TXT-файлы и PDF-отчёты")} (${u.files}, ${u.size})?\n${T("История устройств останется — файлы можно сделать снова.")}`)) return;
+  const r = await api("/api/files/clear", {});
+  addLog(`${T("Удалено файлов")}: ${r.removed} · ${r.size}`);
+  loadFilesUsage();
+};
 const HIST_LIMIT = 300;  // rows drawn at once; the rest is reached through the search
 function renderHistory() {
   const q = $("histSearch").value.trim().toLowerCase();
@@ -1338,7 +1381,7 @@ function renderHistory() {
     if (openRow !== key) return row;
     const evs = [...d.events].reverse().map(e => `<div class="ev"><time>${esc(e.time)}</time>${dot(RES[e.result])}<b>${esc(T(e.action))}</b><small>${esc(T(e.detail || ""))}</small></div>`).join("");
     return row + `<tr class="events"><td colspan="4">${evs || `<span class="empty">${T("Событий нет")}</span>`}
-      <div style="text-align:right;margin-top:6px"><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px"><button data-txt="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Сохранить TXT")}</button><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
   }).join("");
 }
 $("histSearch").oninput = renderHistory;
@@ -1357,6 +1400,12 @@ async function makeReport() {
 }
 document.querySelectorAll(".report-btn").forEach(b => b.onclick = makeReport);
 $("histBody").onclick = async e => {
+  const txt = e.target.closest("[data-txt]");
+  if (txt) {
+    const res = await api("/api/history/txt", { serial: txt.dataset.txt });
+    if (res.error) alert(res.error);
+    return loadFilesUsage();
+  }
   const del = e.target.closest("[data-del]");
   if (del) {
     if (!confirm(LANG === "en" ? `Delete device ${del.dataset.del} from history?` : LANG === "uk" ? `Видалити пристрій ${del.dataset.del} з історії?` : `Удалить устройство ${del.dataset.del} из истории?`)) return;

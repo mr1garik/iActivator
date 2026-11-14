@@ -20,7 +20,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import __version__, applog, autostart, core, driver, history, i18n, report, settings, tray, update
+from . import __version__, applog, autostart, core, devicetext, driver, history, i18n, report, settings, tray, update
 from .i18n import t
 
 LANGUAGES = [
@@ -73,6 +73,12 @@ def _about() -> dict:
         "driver_supported": driver.supported(),
         "autostart": autostart.is_enabled(),
     }
+
+
+def _size(n: int) -> str:
+    if n < 1024 * 1024:
+        return t("{n} КБ", n=max(1, round(n / 1024)) if n else 0)
+    return t("{n} МБ", n=f"{n / 1024 / 1024:.1f}")
 
 
 def _open_folder(path: str) -> None:
@@ -328,6 +334,9 @@ class Handler(BaseHTTPRequestHandler):
     def _do_get(self):
         if self.path == "/api/history":
             return self._send(200, history.summary())
+        if self.path == "/api/files/usage":
+            u = devicetext.usage()
+            return self._send(200, {**u, "size": _size(u["bytes"])})
         if self.path == "/":
             return self._send(200, PAGE, "text/html; charset=utf-8")
         if self.path == "/api/meta":
@@ -471,6 +480,19 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/reports/open":
             _open_folder(str(report.reports_dir()))
             return self._send(200, {"ok": True})
+        if self.path == "/api/history/txt":
+            # One phone: write its file and open it. All phones: write every file, open the folder.
+            ids = None if d.get("all") else [d.get("serial", "")]
+            paths = devicetext.save(ids)
+            if not paths:
+                return self._send(200, {"error": t("Этого устройства нет в истории.")})
+            _open_folder(str(paths[0] if ids else devicetext.texts_dir()))
+            applog.add(t("TXT-файлы сохранены: {n}", n=len(paths)))
+            return self._send(200, {"ok": True, "saved": len(paths)})
+        if self.path == "/api/files/clear":
+            r = devicetext.clear_files()
+            applog.add(t("Удалено файлов: {n}, освобождено {size}", n=r["removed"], size=_size(r["bytes"])))
+            return self._send(200, {**r, "size": _size(r["bytes"])})
         if self.path == "/api/history/delete":
             history.delete(d.get("serial", ""))
             return self._send(200, {"ok": True})
