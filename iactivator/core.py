@@ -452,6 +452,82 @@ def sim_checks(v: dict) -> list[dict]:
             _check("SIM-карта", "info", "Состояние: {state}", state=status or "—")]
 
 
+# Serial numbers of parts the iPhone reports through MobileGestalt (iOS before 17.4; later
+# versions answer "deprecated"). Key -> part name shown to the user.
+PART_KEYS = {
+    "MLBSerialNumber": "Системная плата",
+    "BatterySerialNumber": "Батарея",
+    "PanelSerialNumber": "Дисплей",
+    "RearFacingCameraModuleSerialNumber": "Основная камера",
+    "RearFacingSuperWideCameraModuleSerialNumber": "Сверхширокоугольная камера",
+    "RearFacingTelephotoCameraModuleSerialNumber": "Телекамера",
+    "FrontFacingCameraModuleSerialNumber": "Фронтальная камера",
+    "FrontFacingIRCameraModuleSerialNumber": "Face ID",
+    "MesaSerialNumber": "Touch ID",
+}
+
+
+def _serial_text(value) -> Optional[str]:
+    if isinstance(value, bytes):
+        value = value.hex() if any(b < 32 or b > 126 for b in value) else value.decode("ascii")
+    if not isinstance(value, str):
+        return None
+    value = value.strip().strip("\x00")
+    return value if len(value) >= 6 and value.strip("0") else None
+
+
+def battery_serial(raw: Optional[dict]) -> Optional[str]:
+    """The battery's own serial number from its IORegistry entry, if the iOS version shows it."""
+    raw = raw or {}
+    data = raw.get("BatteryData") or {}
+    for src in (raw, data):
+        for key in ("Serial", "BatterySerialNumber"):
+            serial = _serial_text(src.get(key))
+            if serial:
+                return serial
+    return None
+
+
+async def read_part_serials(lockdown, battery_raw: Optional[dict] = None) -> dict:
+    """Serial numbers of the parts this iOS version reports. Never fails: unknown parts are left out."""
+    parts: dict[str, str] = {}
+    try:
+        async with DiagnosticsService(lockdown) as diag:
+            values = await diag.mobilegestalt(list(PART_KEYS))
+        for key in PART_KEYS:
+            serial = _serial_text((values or {}).get(key))
+            if serial:
+                parts[key] = serial
+    except Exception:
+        pass  # iOS 17.4+ no longer answers MobileGestalt over USB
+    if "BatterySerialNumber" not in parts:
+        serial = battery_serial(battery_raw)
+        if serial:
+            parts["BatterySerialNumber"] = serial
+    return parts
+
+
+def parts_checks(current: dict, baseline: Optional[dict], since: Optional[str]) -> list[dict]:
+    """Compare part serial numbers with the ones recorded the first time this iPhone was checked.
+
+    This shows a part replaced after that first check. Whether a part was original before it
+    cannot be told without Apple's factory records, which the phone does not hand out over USB."""
+    name = "Детали"
+    if not current:
+        return [_check(name, "info", "Эта версия iOS не сообщает серийные номера деталей по USB")]
+    names = lambda keys: ", ".join(tr(PART_KEYS[k]) for k in PART_KEYS if k in keys)  # noqa: E731
+    if not baseline:
+        return [_check(name, "info", "Записаны серийные номера: {parts}. При следующих проверках программа "
+                                     "сообщит, если какую-то из этих деталей заменят", parts=names(current))]
+    changed = [k for k in PART_KEYS if k in current and k in baseline and current[k] != baseline[k]]
+    compared = [k for k in PART_KEYS if k in current and k in baseline]
+    if changed:
+        return [_check(name, "bad", "Заменено после проверки {date}: {parts}", date=since or "—", parts=names(changed))]
+    if not compared:
+        return [_check(name, "info", "Нечего сравнить с прошлой проверкой — записаны: {parts}", parts=names(current))]
+    return [_check(name, "ok", "Не менялись с проверки {date} ({parts})", date=since or "—", parts=names(compared))]
+
+
 def ios_major(version: Optional[str]) -> int:
     """Major iOS version from ProductVersion ("7.1.2" -> 7); 0 when unknown."""
     try:
@@ -588,7 +664,9 @@ def _own_cert() -> Optional[bytes]:
     return _cert_der(path) if path.exists() else None
 
 
-async def run_health_check(serial: str, check_activation: bool = True) -> list[dict]:
+async def run_health_check(serial: str, check_activation: bool = True,
+                           parts_out: Optional[dict] = None) -> list[dict]:
+    """parts_out, when given, receives the part serial numbers (compared by the caller with history)."""
     results: list[dict] = []
     async with device(serial) as lockdown:
         v = lockdown.all_values
@@ -599,6 +677,8 @@ async def run_health_check(serial: str, check_activation: bool = True) -> list[d
             async with DiagnosticsService(lockdown) as diag:
                 raw = await diag.get_battery()
             battery = _battery_info(raw or {}) | {"external": bool((raw or {}).get("ExternalConnected"))}
+            if parts_out is not None:
+                parts_out["serials"] = await read_part_serials(lockdown, raw)  # absent = could not read
         except Exception as e:
             results.append(_check("Батарея", "warn", "Нет доступа к диагностике (разблокируйте iPhone): {e}", e=short_error(e)))
         if battery:

@@ -110,6 +110,7 @@ The app will not activate an iPhone with Activation Lock (iCloud) enabled: the o
 ## Diagnostics & PDF report
 - **Health check** reads battery, Find My, MDM and the last 30 days of crash logs, and shows a clear **Pass / Fail** verdict — handy before buying or reselling a device.
 - **SIM and carrier lock**: SIM state, carrier and the last digits of the ICCID. A carrier lock can't be read over USB directly, but with a SIM from another carrier a locked iPhone reports it, and the check says so.
+- **Replaced parts**: the first check records the serial numbers of the parts the iPhone reports (battery on all versions; logic board, display, cameras, Face ID / Touch ID up to iOS 17.3). Later checks say if any of them was replaced since then — handy for repair shops and returns. Whether a part was original before the first check can't be told: that needs Apple's factory records, which the phone doesn't hand out over USB.
 - **PDF report** per device: the health check plus an "Activation run (last run)" section with the result of each step — so you can see exactly what failed (e.g. activation went through but the phone rejected the Wi-Fi profile) without repeating the whole procedure.
 
 ## Settings and journal
