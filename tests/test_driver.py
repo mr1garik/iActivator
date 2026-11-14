@@ -81,7 +81,9 @@ class Scripts(unittest.TestCase):
     def test_elevated_script_reports_into_the_result_file(self):
         path = Path("C:/Users/Игорь O'Neil/AppData/Local/Temp/x/result.txt")  # Cyrillic and a quote
         s = driver.build_elevated_script("Log 'hi'", path)
-        self.assertIn("$out = 'C:/Users/Игорь O''Neil/AppData/Local/Temp/x/result.txt'", s)
+        expected = str(path).replace("'", "''")  # backslashes on Windows, as the system writes the path
+        self.assertIn(f"$out = '{expected}'", s)
+        self.assertIn("Игорь O''Neil", s)
         self.assertIn("RESULT: OK", s)
         self.assertIn("RESULT: ERROR", s)
         self.assertIn("$ErrorActionPreference = 'Stop'", s)
