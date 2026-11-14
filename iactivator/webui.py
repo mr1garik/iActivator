@@ -88,6 +88,8 @@ class State:
         threading.Thread(target=self.loop.run_forever, daemon=True).start()
         self.lock = threading.Lock()
         self.busy = False
+        self.current = ""  # serial of the phone the running job works on
+        self.queue: list[dict] = []  # phones waiting in auto mode: {"serial", "make"}
         self.labels: dict[str, str] = {}
         self.last_device_error = ""
         self.steps: list[dict] = []  # live activation checklist shown in the UI
@@ -113,12 +115,52 @@ class State:
         """Run a coroutine on the device loop and wait for its result."""
         return asyncio.run_coroutine_threadsafe(coro, self.loop).result()
 
+    def short_label(self, serial: str) -> str:
+        label = self.labels.get(serial, "")
+        model = label.split(" · ")[0] if label else "iPhone"
+        return f"{model} …{serial[-4:]}" if serial else model
+
+    def run_or_queue(self, make_coro, serial: str) -> int:
+        """Start now (returns 0) or put the phone in line (returns its place). A phone already
+        running or waiting is not added twice."""
+        with self.lock:
+            if self.busy:
+                if serial == self.current:
+                    return -1
+                for i, item in enumerate(self.queue, 1):
+                    if item["serial"] == serial:
+                        return i
+                self.queue.append({"serial": serial, "make": make_coro})
+                return len(self.queue)
+        return 0 if self.run_job(make_coro, serial) else self.run_or_queue(make_coro, serial)
+
+    async def _start_next(self) -> None:
+        """After a job: start the next phone in line that is still plugged in."""
+        while True:
+            with self.lock:
+                if not self.queue or self.busy:
+                    return
+                item = self.queue.pop(0)
+            try:
+                connected = await core.connected_serials()
+            except Exception:
+                connected = []
+            if item["serial"] not in connected:
+                self.log(t("Очередь: {label} отключён — пропускаю", label=self.short_label(item["serial"])),
+                         item["serial"], "warn")
+                continue
+            if not self.run_job(item["make"], item["serial"]):
+                with self.lock:
+                    self.queue.insert(0, item)  # someone started a job meanwhile; it starts us when done
+            return
+
     def run_job(self, make_coro, serial: str = "") -> bool:
         """Start a long job in the background; its progress goes to the log."""
         with self.lock:
             if self.busy:
                 return False
             self.busy = True
+            self.current = serial
 
         async def job():
             try:
@@ -131,7 +173,10 @@ class State:
                 applog.exception(e, serial)
                 self.fail_running_steps(core.short_error(e))
             finally:
-                self.busy = False
+                with self.lock:
+                    self.busy = False
+                    self.current = ""
+                await self._start_next()
         asyncio.run_coroutine_threadsafe(job(), self.loop)
         return True
 
@@ -155,6 +200,22 @@ async def _with_activator(serial, fn, action, detail=""):
     finally:
         await act.close()
         await core.CONNECTIONS.drop(serial)
+
+
+async def _auto_ready(serial: str) -> bool:
+    """Auto mode runs only on a phone that still needs activation and is not locked."""
+    async with core.device(serial) as lockdown:
+        if lockdown.all_values.get("ActivationState") != "Unactivated":
+            STATE.log(t("Авто-режим: {label} уже активирован — пропускаю", label=STATE.short_label(serial)), serial)
+            return False
+        checks = await core.lock_checks(lockdown, core._own_cert(), True)
+    bad = [c for c in checks if c["status"] == "bad"]
+    if bad:
+        reason = f"{bad[0]['name']}: {bad[0]['detail']}"
+        STATE.log(t("⛔ Авто-режим остановлен: {reason}", reason=reason), serial, "error")
+        history.add_event(serial, "Активация", "error", reason)
+        return False
+    return True
 
 
 def _parts_checks(serial: str, parts: dict) -> list:
@@ -253,7 +314,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/log"):
             entries, total = applog.since(int(self.path.partition("since=")[2] or 0))
             steps = [{**s, "name": t(s["name"]), "detail": t(s["detail"])} for s in STATE.steps]
-            return self._send(200, {"entries": entries, "next": total, "busy": STATE.busy, "steps": steps})
+            with STATE.lock:
+                current = STATE.short_label(STATE.current) if STATE.busy and STATE.current else ""
+                waiting = [STATE.short_label(q["serial"]) for q in STATE.queue]
+            return self._send(200, {"entries": entries, "next": total, "busy": STATE.busy, "steps": steps,
+                                    "current": current, "queue": waiting})
         if self.path == "/api/driver":
             return self._send(200, _driver_status())
         if self.path.startswith("/api/devices"):
@@ -460,17 +525,31 @@ class Handler(BaseHTTPRequestHandler):
             names = ([core.STEP_ACTIVATE] if opts.activate else []) + [core.STEP_LANG]
             names += [core.STEP_SKIP] if opts.skip_setup else []
             names += [core.STEP_WIFI] if opts.wifi else []
-            STATE.set_steps(names)
-            job = lambda: _with_activator(serial, lambda a: a.run(opts), action, detail)
+
+            async def job():
+                STATE.set_steps(names)  # only once it really starts, not while another phone runs
+                if d.get("queue") and not await _auto_ready(serial):
+                    STATE.set_steps([])
+                    return
+                await _with_activator(serial, lambda a: a.run(opts), action, detail)
+            if d.get("queue"):  # auto mode: several phones are handled one after another
+                place = STATE.run_or_queue(job, serial)
+                if place > 0:
+                    STATE.log(t("Авто-режим: {label} — в очереди ({n})", label=STATE.short_label(serial), n=place), serial)
+                return self._send(200, {"ok": True, "queued": max(place, 0)})
         elif self.path == "/api/wifi":
             wifi = _wifi(d)
             if wifi is None:
                 return self._send(400, {"error": t("Введите имя сети")})
-            STATE.set_steps([])
-            job = lambda: _with_activator(serial, lambda a: a.install_wifi_only(wifi), "Wi-Fi", f"«{wifi.ssid}»")
+
+            async def job():
+                STATE.set_steps([])
+                await _with_activator(serial, lambda a: a.install_wifi_only(wifi), "Wi-Fi", f"«{wifi.ssid}»")
         elif self.path == "/api/erase":
-            STATE.set_steps([])
-            job = lambda: _with_activator(serial, lambda a: a.erase(), "Стирание")
+
+            async def job():
+                STATE.set_steps([])
+                await _with_activator(serial, lambda a: a.erase(), "Стирание")
         else:
             return self._send(404, {"error": "not found"})
         if not STATE.run_job(job, serial):

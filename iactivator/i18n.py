@@ -393,6 +393,11 @@ EN: dict[str, str] = {
     "Заменено после проверки {date}: {parts}": "Replaced since the check on {date}: {parts}",
     "Нечего сравнить с прошлой проверкой — записаны: {parts}": "Nothing to compare with the earlier check — recorded: {parts}",
     "Не менялись с проверки {date} ({parts})": "Unchanged since the check on {date} ({parts})",
+    # ---- several iPhones ----
+    "Очередь: {label} отключён — пропускаю": "Queue: {label} was unplugged — skipping",
+    "Авто-режим: {label} — в очереди ({n})": "Auto mode: {label} — waiting ({n})",
+    "Авто-режим: {label} уже активирован — пропускаю": "Auto mode: {label} is already activated — skipping",
+    "⛔ Авто-режим остановлен: {reason}": "⛔ Auto mode stopped: {reason}",
 }
 
 # Russian source -> Ukrainian.
@@ -746,4 +751,9 @@ UK: dict[str, str] = {
     "Заменено после проверки {date}: {parts}": "Замінено після перевірки {date}: {parts}",
     "Нечего сравнить с прошлой проверкой — записаны: {parts}": "Немає з чим порівняти попередню перевірку — записано: {parts}",
     "Не менялись с проверки {date} ({parts})": "Не змінювалися з перевірки {date} ({parts})",
+    # ---- several iPhones ----
+    "Очередь: {label} отключён — пропускаю": "Черга: {label} відключено — пропускаю",
+    "Авто-режим: {label} — в очереди ({n})": "Авто-режим: {label} — у черзі ({n})",
+    "Авто-режим: {label} уже активирован — пропускаю": "Авто-режим: {label} уже активовано — пропускаю",
+    "⛔ Авто-режим остановлен: {reason}": "⛔ Авто-режим зупинено: {reason}",
 }
