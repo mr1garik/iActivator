@@ -59,7 +59,7 @@ def _ver_tuple(s: str) -> tuple:
 # Release file names. Up to v3.0 they were "iActivator.exe" and "iActivator-mac.zip".
 # The installer in v3.0 unpacks the Mac archive in a way that loses the executable
 # flag and symlinks (the updated app would not start) and may hang on Windows user
-# folders with non-Latin names. Releases from v3.1 on use new names, so a v3.0
+# folders with non-Latin names. Releases from v3.0.1 on use new names, so a v3.0
 # install cannot find them and never runs that installer: v3.0 users update once by
 # downloading the new version from the releases page.
 ASSET_WINDOWS = "iActivator-windows.exe"
