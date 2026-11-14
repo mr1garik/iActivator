@@ -235,6 +235,25 @@ def delete(serial: str) -> None:
         _save(data)
 
 
+def clear() -> int:
+    """Forget every device: empty history.json and delete history.csv. Returns how many
+    devices there were."""
+    global _csv_timer
+    with _lock:
+        data = _load()
+        n = len(data)
+        data.clear()
+        _save(data)
+        if _csv_timer is not None:
+            _csv_timer.cancel()
+            _csv_timer = None
+        try:
+            csv_path().unlink()
+        except OSError:
+            pass  # not made yet, or open in Excel (it is rewritten empty on the next change)
+    return n
+
+
 def export() -> dict:
     with _lock:
         return copy.deepcopy(_load())

@@ -336,7 +336,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, history.summary())
         if self.path == "/api/files/usage":
             u = devicetext.usage()
-            return self._send(200, {**u, "size": _size(u["bytes"])})
+            return self._send(200, {**u, "size": _size(u["bytes"]), "devices": len(history.export())})
         if self.path == "/":
             return self._send(200, PAGE, "text/html; charset=utf-8")
         if self.path == "/api/meta":
@@ -490,8 +490,9 @@ class Handler(BaseHTTPRequestHandler):
             applog.add(t("TXT-файлы сохранены: {n}", n=len(paths)))
             return self._send(200, {"ok": True, "saved": len(paths)})
         if self.path == "/api/files/clear":
-            r = devicetext.clear_files()
-            applog.add(t("Удалено файлов: {n}, освобождено {size}", n=r["removed"], size=_size(r["bytes"])))
+            r = devicetext.clear_all()
+            applog.add(t("История очищена: устройств {d}, файлов {n}, освобождено {size}",
+                         d=r["devices"], n=r["removed"], size=_size(r["bytes"])))
             return self._send(200, {**r, "size": _size(r["bytes"])})
         if self.path == "/api/history/delete":
             history.delete(d.get("serial", ""))

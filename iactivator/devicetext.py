@@ -2,8 +2,7 @@
 serial numbers recorded at the first check, and every event. A few kilobytes each,
 readable anywhere (Notepad, TextEdit, a phone).
 
-The files and the PDF reports are only copies made for the user: the history itself
-lives in history.json, so clear_files() can free the space at any time without losing it.
+clear_all() deletes these files, the PDF reports and the device history in one go.
 """
 from __future__ import annotations
 
@@ -142,3 +141,10 @@ def clear_files() -> dict:
                 except OSError:
                     pass  # open in another program: left for next time
     return {"removed": removed, "bytes": freed}
+
+
+def clear_all() -> dict:
+    """Delete the TXT files, the PDF reports and the device history."""
+    r = clear_files()
+    r["devices"] = history.clear()
+    return r

@@ -349,7 +349,7 @@
       <div class="row files-row">
         <button id="txtAll" title="По отдельному TXT-файлу на каждый телефон: данные, детали и все события"><svg><use href="#i-file"/></svg>Все в TXT</button>
         <span id="filesUsage" class="empty"></span>
-        <button id="filesClear" class="ghost-danger" title="Удалить TXT-файлы и PDF-отчёты. История остаётся — файлы можно сделать снова">Очистить файлы</button>
+        <button id="filesClear" class="ghost-danger" title="Удалить историю устройств, TXT-файлы и PDF-отчёты">Очистить всё</button>
       </div>
       <table>
         <thead><tr><th>Модель</th><th>Серийный №</th><th>IMEI</th><th>Последнее действие</th></tr></thead>
@@ -557,13 +557,12 @@ const T_EN = {
   "Модель": "Model", "Серийный №": "Serial no.", "Последнее действие": "Last action",
   "Пока пусто — устройства появятся здесь после подключения.": "Empty for now — devices will appear here once connected.",
   "Ничего не найдено": "Nothing found", "Удалить из истории": "Delete from history", "Событий нет": "No events",
-  "Сохранить TXT": "Save TXT", "Все в TXT": "All to TXT", "Очистить файлы": "Clear files",
+  "Сохранить TXT": "Save TXT", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
-  "Удалить TXT-файлы и PDF-отчёты. История остаётся — файлы можно сделать снова": "Delete the TXT files and PDF reports. The history stays — the files can be made again",
+  "Удалить историю устройств, TXT-файлы и PDF-отчёты": "Delete the device history, TXT files and PDF reports",
   "Файлов TXT и PDF": "TXT and PDF files", "Файлов TXT и PDF нет": "No TXT or PDF files",
-  "Удалить TXT-файлы и PDF-отчёты": "Delete the TXT files and PDF reports",
-  "История устройств останется — файлы можно сделать снова.": "The device history stays — the files can be made again.",
-  "Удалено файлов": "Files deleted",
+  "Удалить всю историю и файлы?": "Delete the whole history and the files?",
+  "Устройств в истории": "Devices in history", "Это нельзя отменить.": "This cannot be undone.",
   // journal
   "Какие записи показывать": "Which entries to show", "Основное": "Main",
   "Только ошибки и замечания": "Errors and warnings only",
@@ -738,13 +737,12 @@ const T_UK = {
   "Модель": "Модель", "Серийный №": "Серійний №", "Последнее действие": "Остання дія",
   "Пока пусто — устройства появятся здесь после подключения.": "Поки порожньо — пристрої з'являться тут після підключення.",
   "Ничего не найдено": "Нічого не знайдено", "Удалить из истории": "Видалити з історії", "Событий нет": "Подій немає",
-  "Сохранить TXT": "Зберегти TXT", "Все в TXT": "Усі в TXT", "Очистить файлы": "Очистити файли",
+  "Сохранить TXT": "Зберегти TXT", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
-  "Удалить TXT-файлы и PDF-отчёты. История остаётся — файлы можно сделать снова": "Видалити TXT-файли та PDF-звіти. Історія залишається — файли можна зробити знову",
+  "Удалить историю устройств, TXT-файлы и PDF-отчёты": "Видалити історію пристроїв, TXT-файли та PDF-звіти",
   "Файлов TXT и PDF": "Файлів TXT і PDF", "Файлов TXT и PDF нет": "Файлів TXT і PDF немає",
-  "Удалить TXT-файлы и PDF-отчёты": "Видалити TXT-файли та PDF-звіти",
-  "История устройств останется — файлы можно сделать снова.": "Історія пристроїв залишиться — файли можна зробити знову.",
-  "Удалено файлов": "Видалено файлів",
+  "Удалить всю историю и файлы?": "Видалити всю історію та файли?",
+  "Устройств в истории": "Пристроїв в історії", "Это нельзя отменить.": "Це не можна скасувати.",
   "Какие записи показывать": "Які записи показувати", "Основное": "Основне",
   "Только ошибки и замечания": "Лише помилки та зауваження",
   "Подробно (с технической информацией)": "Докладно (з технічною інформацією)",
@@ -1344,7 +1342,7 @@ async function loadFilesUsage() {
   try {
     const u = await api("/api/files/usage");
     $("filesUsage").textContent = u.files ? `${T("Файлов TXT и PDF")}: ${u.files} · ${u.size}` : T("Файлов TXT и PDF нет");
-    $("filesClear").disabled = !u.files;
+    $("filesClear").disabled = !u.files && !u.devices;
   } catch {}
 }
 $("txtAll").onclick = async () => {
@@ -1355,11 +1353,11 @@ $("txtAll").onclick = async () => {
 };
 $("filesClear").onclick = async () => {
   const u = await api("/api/files/usage");
-  if (!u.files) return loadFilesUsage();
-  if (!confirm(`${T("Удалить TXT-файлы и PDF-отчёты")} (${u.files}, ${u.size})?\n${T("История устройств останется — файлы можно сделать снова.")}`)) return;
-  const r = await api("/api/files/clear", {});
-  addLog(`${T("Удалено файлов")}: ${r.removed} · ${r.size}`);
-  loadFilesUsage();
+  if (!u.files && !u.devices) return loadFilesUsage();
+  if (!confirm(`${T("Удалить всю историю и файлы?")}\n\n${T("Устройств в истории")}: ${u.devices}\n${T("Файлов TXT и PDF")}: ${u.files} · ${u.size}\n\n${T("Это нельзя отменить.")}`)) return;
+  await api("/api/files/clear", {});
+  openRow = null;
+  loadHistory();
 };
 const HIST_LIMIT = 300;  // rows drawn at once; the rest is reached through the search
 function renderHistory() {

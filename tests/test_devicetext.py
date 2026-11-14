@@ -89,6 +89,19 @@ class DeviceText(unittest.TestCase):
         self.assertTrue(keep.exists())
         self.assertIn(PHONE["id"], history.export())  # files can be made again
 
+    def test_clear_all_removes_files_and_the_history(self):
+        devicetext.save()
+        (self.reports / "report.pdf").write_bytes(b"%PDF")
+        history.flush_csv()
+        self.assertTrue(history.csv_path().exists())
+        r = devicetext.clear_all()
+        self.assertEqual((r["removed"], r["devices"]), (2, 1))
+        self.assertEqual(history.export(), {})
+        self.assertFalse(history.csv_path().exists())
+        history._reset_cache()
+        self.assertEqual(history.export(), {})  # also gone from history.json on disk
+        self.assertEqual(devicetext.usage()["files"], 0)
+
     def test_clear_with_nothing_there(self):
         self.assertEqual(devicetext.clear_files()["removed"], 0)
 
