@@ -56,7 +56,7 @@ def system_lang() -> str:
     return "en"
 
 SERVICE = "iActivator Wi-Fi"
-THEMES = ("auto", "light", "dark")
+THEMES = ("auto", "light", "dark", "night", "mint", "graphite")
 LANGS = ("ru", "en", "uk")
 EXPORT_KIND = "iActivator settings"
 _lock = threading.Lock()

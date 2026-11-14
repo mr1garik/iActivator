@@ -116,7 +116,7 @@ The app will not activate an iPhone with Activation Lock (iCloud) enabled: the o
 
 ## Settings and journal
 - **App language:** English, Ukrainian or Russian (Settings → App language). On first run the app follows your system language.
-- **Theme:** System, Light or Dark (Settings).
+- **Theme:** System, Light, Dark, Blue night, Mint or Graphite (Settings) — the same family of themes as iOS Panic Reader.
 - **Transfer settings:** Settings → "Save to file…" writes Wi‑Fi networks, language, region, modes and theme into a single `.json`. Optionally it also includes Wi‑Fi passwords, the supervision key and device history. On another computer: "Load from file…". Passwords in the file are not encrypted.
 - **Journal:** every entry has a time, device and level. Filters: main, errors only, detailed (with technical error info). Daily logs are saved to the `logs` folder in the data directory and kept for 30 days. "Export to file" collects the whole journal and device history into one text file (for your own archive). "For sharing (no numbers)" does the same but hides serial numbers, IMEI and UDID and leaves out the history — that file is safe to send for diagnosis.
 
