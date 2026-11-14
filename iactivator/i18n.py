@@ -362,6 +362,22 @@ EN: dict[str, str] = {
     "установка Apple Devices": "installing Apple Devices",
     "перезапуск службы": "restarting the service",
     "переустановка драйвера iPhone": "reinstalling the iPhone driver",
+    # ---- SIM and carrier lock ----
+    "SIM-карта": "SIM card",
+    "Привязка к оператору": "Carrier lock",
+    "Не вставлена": "Not inserted",
+    "Вставьте SIM-карту, чтобы проверить привязку к оператору": "Insert a SIM card to check the carrier lock",
+    "iPhone не принимает эту SIM ({carrier})": "The iPhone does not accept this SIM ({carrier})",
+    "Похоже, iPhone привязан к другому оператору (SIM-lock). Проверьте по IMEI у оператора или продавца": "The iPhone seems to be locked to another carrier (SIM lock). Check the IMEI with the carrier or the seller",
+    "Работает · {carrier} · ICCID {tail}": "Working · {carrier} · ICCID {tail}",
+    "С этой SIM телефон работает. Полностью проверить привязку по USB нельзя: вставьте SIM другого оператора — если iPhone привязан, здесь будет предупреждение": "The phone works with this SIM. The lock can't be fully checked over USB: insert a SIM from another carrier — if the iPhone is locked, a warning will appear here",
+    "Заблокирована PIN-кодом — введите PIN на iPhone": "Locked with a PIN — enter the PIN on the iPhone",
+    "Заблокирована PUK-кодом — нужен PUK от оператора": "Locked with a PUK — get the PUK from the carrier",
+    "Ещё не готова — подождите немного и проверьте снова": "Not ready yet — wait a moment and check again",
+    "Ошибка SIM-карты — проверьте SIM или лоток": "SIM card error — check the SIM or the tray",
+    "SIM-карта заблокирована оператором": "The SIM card is blocked by the carrier",
+    "Включён режим разрешённых номеров (FDN)": "Fixed dialing (FDN) is on",
+    "Состояние: {state}": "Status: {state}",
 }
 
 # Russian source -> Ukrainian.
@@ -684,4 +700,20 @@ UK: dict[str, str] = {
     "установка Apple Devices": "встановлення Apple Devices",
     "перезапуск службы": "перезапуск служби",
     "переустановка драйвера iPhone": "перевстановлення драйвера iPhone",
+    # ---- SIM and carrier lock ----
+    "SIM-карта": "SIM-картка",
+    "Привязка к оператору": "Прив'язка до оператора",
+    "Не вставлена": "Не вставлена",
+    "Вставьте SIM-карту, чтобы проверить привязку к оператору": "Вставте SIM-картку, щоб перевірити прив'язку до оператора",
+    "iPhone не принимает эту SIM ({carrier})": "iPhone не приймає цю SIM ({carrier})",
+    "Похоже, iPhone привязан к другому оператору (SIM-lock). Проверьте по IMEI у оператора или продавца": "Схоже, iPhone прив'язаний до іншого оператора (SIM-lock). Перевірте за IMEI в оператора або продавця",
+    "Работает · {carrier} · ICCID {tail}": "Працює · {carrier} · ICCID {tail}",
+    "С этой SIM телефон работает. Полностью проверить привязку по USB нельзя: вставьте SIM другого оператора — если iPhone привязан, здесь будет предупреждение": "З цією SIM телефон працює. Повністю перевірити прив'язку через USB не можна: вставте SIM іншого оператора — якщо iPhone прив'язаний, тут буде попередження",
+    "Заблокирована PIN-кодом — введите PIN на iPhone": "Заблокована PIN-кодом — введіть PIN на iPhone",
+    "Заблокирована PUK-кодом — нужен PUK от оператора": "Заблокована PUK-кодом — потрібен PUK від оператора",
+    "Ещё не готова — подождите немного и проверьте снова": "Ще не готова — зачекайте трохи й перевірте знову",
+    "Ошибка SIM-карты — проверьте SIM или лоток": "Помилка SIM-картки — перевірте SIM або лоток",
+    "SIM-карта заблокирована оператором": "SIM-картку заблоковано оператором",
+    "Включён режим разрешённых номеров (FDN)": "Увімкнено режим дозволених номерів (FDN)",
+    "Состояние: {state}": "Стан: {state}",
 }
