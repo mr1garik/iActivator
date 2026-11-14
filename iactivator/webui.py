@@ -18,7 +18,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import __version__, applog, autostart, core, history, i18n, report, settings, tray, update
+from . import __version__, applog, autostart, core, driver, history, i18n, report, settings, tray, update
 from .i18n import t
 
 LANGUAGES = [
@@ -68,6 +68,7 @@ def _about() -> dict:
         "instagram": INSTAGRAM,
         "wallets": WALLETS,
         "autostart_supported": autostart.supported(),
+        "driver_supported": driver.supported(),
         "autostart": autostart.is_enabled(),
     }
 
@@ -234,6 +235,8 @@ class Handler(BaseHTTPRequestHandler):
             entries, total = applog.since(int(self.path.partition("since=")[2] or 0))
             steps = [{**s, "name": t(s["name"]), "detail": t(s["detail"])} for s in STATE.steps]
             return self._send(200, {"entries": entries, "next": total, "busy": STATE.busy, "steps": steps})
+        if self.path == "/api/driver":
+            return self._send(200, _driver_status())
         if self.path.startswith("/api/devices"):
             # Polled every few seconds: cheap usbmux listing, full labels only for new devices
             # or when the page asks for a refresh.
@@ -307,6 +310,26 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True})
         if self.path == "/api/logs/export":
             return self._send(200, _export_logs(bool(d.get("history", True)), bool(d.get("redact"))))
+        if self.path == "/api/driver/fix":
+            action = d.get("action", "")
+            with STATE.lock:
+                if STATE.busy:
+                    return self._send(409, {"error": t("Уже выполняется другая операция")})
+                STATE.busy = True  # no activation while the driver is being replaced
+            try:
+                STATE.log(t("Драйвер Apple: {action}…", action=t(DRIVER_ACTIONS.get(action, action))))
+                res = driver.fix(action)
+            finally:
+                STATE.busy = False
+            if res.get("ok"):
+                STATE.log(t("✅ Драйвер Apple: {action} — готово", action=t(DRIVER_ACTIONS.get(action, action))), level="ok")
+            elif res.get("error"):
+                STATE.log(t("❌ Драйвер Apple: {e}", e=res["error"]))
+            for line in res.get("log", []):
+                STATE.log("  " + line, level="debug")
+            if action in ("restart", "reinstall"):
+                STATE.labels = {}  # re-read device names once the driver is back
+            return self._send(200, res)
         if self.path == "/api/open-url":
             url = d.get("url", "")
             if url in OPEN_URL_ALLOWED:
@@ -429,6 +452,26 @@ class Handler(BaseHTTPRequestHandler):
         if not STATE.run_job(job, serial):
             return self._send(409, {"error": t("Уже выполняется другая операция")})
         self._send(200, {"ok": True})
+
+
+DRIVER_ACTIONS = {"install": "установка Apple Devices", "restart": "перезапуск службы",
+                  "reinstall": "переустановка драйвера iPhone"}
+
+
+def _driver_status() -> dict:
+    """Check the Apple driver (Windows). The service's own device count tells a working
+    driver from an iPhone Windows sees only as a camera."""
+    mux_devices = None
+    if driver.supported():
+        try:
+            mux_devices = len(STATE.run(core.connected_serials()))
+        except Exception:
+            mux_devices = None
+    facts = driver.collect(mux_devices)
+    verdict = driver.diagnose(facts)
+    STATE.log(t("Драйвер Apple: {message}", message=verdict["message"]),
+              level={"ok": "debug", "warn": "warn", "bad": "warn"}[verdict["level"]])
+    return {"supported": driver.supported(), **verdict, "facts": facts}
 
 
 THEME_NAMES = {"auto": "как в системе", "light": "светлая", "dark": "тёмная"}
