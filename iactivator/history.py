@@ -1,10 +1,14 @@
 """History of processed devices: who was connected and what was done with them.
 
-Kept in history.json (app data folder); history.csv next to it is rewritten on every
-change so the list can be opened in Excel without the program.
+Kept in history.json (app data folder), which is read once and then kept in memory:
+every change is written to the file right away, but nothing is re-read or re-parsed.
+history.csv next to it (for Excel) is rebuilt a few seconds after the last change and
+before it is opened, not on every event, so a long history does not slow each step down.
 """
 from __future__ import annotations
 
+import atexit
+import copy
 import csv
 import json
 import threading
@@ -13,7 +17,10 @@ from datetime import datetime
 from .core import app_data_dir
 from .i18n import t as tr
 
-_lock = threading.Lock()
+_lock = threading.RLock()
+_cache: dict | None = None   # the history, as in history.json
+_csv_timer: threading.Timer | None = None
+CSV_DELAY = 3.0  # seconds after the last change
 RESULT = {"ok": "Успешно", "warn": "Замечания", "error": "Ошибка", "info": ""}
 
 
@@ -26,10 +33,26 @@ def csv_path():
 
 
 def _load() -> dict:
-    try:
-        return _migrate(json.loads(json_path().read_text(encoding="utf-8")))
-    except (OSError, ValueError):
-        return {}
+    """The history (call with _lock held). Read from disk only the first time."""
+    global _cache
+    if _cache is None:
+        try:
+            _cache = _migrate(json.loads(json_path().read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            _cache = {}
+        try:
+            if _cache and (not csv_path().exists() or csv_path().stat().st_mtime < json_path().stat().st_mtime):
+                _schedule_csv()  # the table is missing or older than the history
+        except OSError:
+            pass
+    return _cache
+
+
+def _reset_cache() -> None:
+    """Forget the in-memory copy (tests, or after the file was replaced)."""
+    global _cache
+    with _lock:
+        _cache = None
 
 
 def _is_udid(s: str) -> bool:
@@ -77,7 +100,29 @@ def _save(data: dict) -> None:
     tmp = json_path().with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     tmp.replace(json_path())
-    _write_csv(data)
+    _schedule_csv()
+
+
+def _schedule_csv() -> None:
+    global _csv_timer
+    with _lock:
+        if _csv_timer is None:
+            _csv_timer = threading.Timer(CSV_DELAY, flush_csv)
+            _csv_timer.daemon = True
+            _csv_timer.start()
+
+
+def flush_csv() -> None:
+    """Write history.csv now (before it is opened, and on exit)."""
+    global _csv_timer
+    with _lock:
+        if _csv_timer is not None:
+            _csv_timer.cancel()
+            _csv_timer = None
+        _write_csv(_load())
+
+
+atexit.register(flush_csv)
 
 
 def _write_csv(data: dict) -> None:
@@ -139,7 +184,9 @@ def add_event(serial: str, action: str, result: str, detail: str = "") -> None:
 
 def summary() -> dict:
     with _lock:
-        data = _load()
+        # A copy, because the window serialises it after the lock is released. Event entries
+        # are never changed once added, so copying each device and its event list is enough.
+        data = {k: {**d, "events": list(d.get("events", []))} for k, d in _load().items()}
     today = datetime.now().strftime("%Y-%m-%d")
     devices = sorted(data.values(), key=lambda d: d.get("last_seen", ""), reverse=True)
     def did(d, action, result="ok"):
@@ -165,7 +212,7 @@ def delete(serial: str) -> None:
 
 def export() -> dict:
     with _lock:
-        return _load()
+        return copy.deepcopy(_load())
 
 
 def merge(other: dict) -> int:

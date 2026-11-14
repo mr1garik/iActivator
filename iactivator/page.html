@@ -651,6 +651,10 @@ const T_EN = {
   "Установите «Apple Devices» в Microsoft Store, затем перезапустите iActivator.": "Install “Apple Devices” in the Microsoft Store, then restart iActivator.",
   "Готово. Проверяю ещё раз…": "Done. Checking again…",
   "Не удалось выполнить операцию.": "The operation failed.",
+  // long history
+  "Показаны последние": "Showing the latest",
+  "из": "of",
+  "Остальные можно найти через поиск.": "Use the search to find the rest.",
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -805,6 +809,10 @@ const T_UK = {
   "Установите «Apple Devices» в Microsoft Store, затем перезапустите iActivator.": "Встановіть «Apple Devices» у Microsoft Store, потім перезапустіть iActivator.",
   "Готово. Проверяю ещё раз…": "Готово. Перевіряю ще раз…",
   "Не удалось выполнить операцию.": "Не вдалося виконати операцію.",
+  // long history
+  "Показаны последние": "Показано останні",
+  "из": "з",
+  "Остальные можно найти через поиск.": "Решту можна знайти через пошук.",
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
 function cap(s) { return LANG === "en" && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
@@ -1240,12 +1248,16 @@ async function loadHistory() {
   $("histCount").textContent = st.total || "";
   renderHistory();
 }
+const HIST_LIMIT = 300;  // rows drawn at once; the rest is reached through the search
 function renderHistory() {
   const q = $("histSearch").value.trim().toLowerCase();
-  const list = hist.devices.filter(d => !q || [d.serial, d.id, d.imei, d.imei2, d.model, d.name].some(v => v && v.toLowerCase().includes(q)));
-  $("histEmpty").style.display = list.length ? "none" : "";
-  $("histEmpty").textContent = hist.devices.length ? T("Ничего не найдено") : T("Пока пусто — устройства появятся здесь после подключения.");
-  $("histBody").innerHTML = list.map(d => {
+  const list = hist.devices.filter(d => !q || [d.serial, d.id, d.imei, d.imei2, d.model, d.model_name && T(d.model_name), d.name]
+    .some(v => v && v.toLowerCase().includes(q)));
+  const more = list.length > HIST_LIMIT;
+  $("histEmpty").style.display = list.length && !more ? "none" : "";
+  $("histEmpty").textContent = more ? `${T("Показаны последние")} ${HIST_LIMIT} ${T("из")} ${list.length}. ${T("Остальные можно найти через поиск.")}`
+    : hist.devices.length ? T("Ничего не найдено") : T("Пока пусто — устройства появятся здесь после подключения.");
+  $("histBody").innerHTML = list.slice(0, HIST_LIMIT).map(d => {
     const key = d.id || d.serial;
     const last = d.events[d.events.length - 1];
     const row = `<tr class="dev-row" data-key="${esc(key)}">
