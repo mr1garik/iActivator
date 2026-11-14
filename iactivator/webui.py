@@ -143,6 +143,7 @@ async def _with_activator(serial, fn, action, detail=""):
     STATE.log(t("▶ {action}: {detail}", action=t(action), detail=detail) if detail
               else t("▶ {action}", action=t(action)), serial)
     started = time.monotonic()
+    await core.CONNECTIONS.drop(serial)  # the job changes the phone (activation, erase): start clean
     try:
         await fn(act)
         history.add_event(serial, action, "ok", detail)
@@ -152,6 +153,7 @@ async def _with_activator(serial, fn, action, detail=""):
         raise
     finally:
         await act.close()
+        await core.CONNECTIONS.drop(serial)
 
 
 def _record_checks(serial: str, action: str, results: list) -> None:

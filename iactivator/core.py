@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from contextlib import asynccontextmanager
 import plistlib
 import sys
 import uuid
@@ -153,8 +154,82 @@ def short_error(e: Optional[BaseException]) -> str:
     return text[:300]
 
 
+async def _close_quietly(lockdown) -> None:
+    try:
+        await lockdown.close()
+    except Exception:
+        pass
+
+
+class _Connections:
+    """One open connection per iPhone, shared by the read-only operations that follow each
+    other when a phone is plugged in (device info, Find My / MDM, diagnostics, PDF report).
+    Opening a connection means pairing checks and a TLS handshake; reusing it costs one
+    request, which also refreshes the cached device values and proves the phone is still
+    there. Unused connections are closed after IDLE_SECONDS or when the phone is unplugged."""
+    IDLE_SECONDS = 20.0
+
+    def __init__(self) -> None:
+        self._idle: dict[str, tuple] = {}  # serial -> (lockdown, time it was returned)
+
+    @staticmethod
+    def _now() -> float:
+        return asyncio.get_running_loop().time()
+
+    async def take(self, serial: str):
+        entry = self._idle.pop(serial, None)
+        if entry is not None:
+            lockdown, since = entry
+            if self._now() - since < self.IDLE_SECONDS:
+                try:
+                    await lockdown.get_value()  # refreshes all_values (activation state etc.)
+                    return lockdown
+                except Exception:
+                    pass  # unplugged, locked or replugged: open a new one below
+            await _close_quietly(lockdown)
+        return await create_using_usbmux(serial=serial, autopair=True, pair_timeout=60)
+
+    async def give(self, serial: str, lockdown) -> None:
+        old = self._idle.pop(serial, None)
+        if old is not None and old[0] is not lockdown:
+            await _close_quietly(old[0])
+        self._idle[serial] = (lockdown, self._now())
+
+    async def drop(self, serial: Optional[str] = None) -> None:
+        """Close the idle connection to one phone (or all), e.g. before activation or erase."""
+        for key in ([serial] if serial else list(self._idle)):
+            entry = self._idle.pop(key, None)
+            if entry is not None:
+                await _close_quietly(entry[0])
+
+    async def tidy(self, connected: list[str]) -> None:
+        """Close connections to phones that were unplugged or have been idle too long."""
+        now = self._now()
+        for key, (_, since) in list(self._idle.items()):
+            if key not in connected or now - since >= self.IDLE_SECONDS:
+                await self.drop(key)
+
+
+CONNECTIONS = _Connections()
+
+
+@asynccontextmanager
+async def device(serial: str):
+    """A connection to the iPhone, reused across the read-only operations in a row."""
+    lockdown = await CONNECTIONS.take(serial)
+    try:
+        yield lockdown
+    except BaseException:
+        await _close_quietly(lockdown)  # never hand a connection in an unknown state to the next caller
+        raise
+    else:
+        await CONNECTIONS.give(serial, lockdown)
+
+
 async def connected_serials() -> list[str]:
-    return [d.serial for d in await usbmux.list_devices() if d.connection_type == "USB"]
+    serials = [d.serial for d in await usbmux.list_devices() if d.connection_type == "USB"]
+    await CONNECTIONS.tidy(serials)  # polled every few seconds by the window
+    return serials
 
 
 async def list_devices() -> list[DeviceInfo]:
@@ -179,13 +254,10 @@ async def list_devices() -> list[DeviceInfo]:
 
 
 async def get_supported_languages(serial: str) -> tuple[list[str], list[str]]:
-    lockdown = await create_using_usbmux(serial=serial, autopair=True, pair_timeout=60)
-    try:
+    async with device(serial) as lockdown:
         langs = await lockdown.get_value("com.apple.international", "SupportedLanguages") or []
         locales = await lockdown.get_value("com.apple.international", "SupportedLocales") or []
         return list(langs), list(locales)
-    finally:
-        await lockdown.close()
 
 
 def _battery_info(raw: dict) -> dict:
@@ -221,8 +293,7 @@ def _battery_info(raw: dict) -> dict:
 
 
 async def get_device_details(serial: str) -> dict:
-    lockdown = await create_using_usbmux(serial=serial, autopair=True, pair_timeout=60)
-    try:
+    async with device(serial) as lockdown:
         v = lockdown.all_values
         info = {
             "conn_id": serial,  # usbmux identifier (UDID): the stable key used everywhere in the UI
@@ -254,8 +325,6 @@ async def get_device_details(serial: str) -> dict:
             if level is not None:
                 info["battery"] = {"level": level}
         return info
-    finally:
-        await lockdown.close()
 
 
 # Substring of a panic log -> what usually is at fault. Checked in order, first match wins.
@@ -453,11 +522,8 @@ async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activati
 
 
 async def get_lock_checks(serial: str, check_activation: bool = True) -> list[dict]:
-    lockdown = await create_using_usbmux(serial=serial, autopair=True, pair_timeout=60)
-    try:
+    async with device(serial) as lockdown:
         return await lock_checks(lockdown, _own_cert(), check_activation)
-    finally:
-        await lockdown.close()
 
 
 def _own_cert() -> Optional[bytes]:
@@ -466,9 +532,8 @@ def _own_cert() -> Optional[bytes]:
 
 
 async def run_health_check(serial: str, check_activation: bool = True) -> list[dict]:
-    lockdown = await create_using_usbmux(serial=serial, autopair=True, pair_timeout=60)
     results: list[dict] = []
-    try:
+    async with device(serial) as lockdown:
         v = lockdown.all_values
 
         # Battery
@@ -533,8 +598,6 @@ async def run_health_check(serial: str, check_activation: bool = True) -> list[d
 
         results = await lock_checks(lockdown, _own_cert(), check_activation) + results
         return results
-    finally:
-        await lockdown.close()
 
 
 def build_wifi_profile(wifi: WifiOptions) -> tuple[bytes, str]:
