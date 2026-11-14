@@ -6,6 +6,7 @@ renders blank windows on recent versions; a browser works the same everywhere.
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
 import platform
 import re
@@ -111,9 +112,18 @@ class State:
             if s["status"] in ("run", "pending"):
                 s["status"], s["detail"] = ("error", detail) if s["status"] == "run" else ("skipped", "")
 
-    def run(self, coro):
-        """Run a coroutine on the device loop and wait for its result."""
-        return asyncio.run_coroutine_threadsafe(coro, self.loop).result()
+    def run(self, coro, timeout: float = 120):
+        """Run a coroutine on the device loop and wait for its result, at most `timeout` seconds.
+
+        Without a limit, an iPhone or Apple service that stops answering would leave the request
+        thread waiting forever, and the window polls every few seconds: threads would pile up.
+        On timeout the operation is cancelled (its connection is closed) and an error is raised."""
+        fut = asyncio.run_coroutine_threadsafe(coro, self.loop)
+        try:
+            return fut.result(timeout)
+        except concurrent.futures.TimeoutError:
+            fut.cancel()
+            raise TimeoutError(t("Нет ответа от iPhone или службы Apple за {n} с", n=int(timeout))) from None
 
     def short_label(self, serial: str) -> str:
         label = self.labels.get(serial, "")
@@ -286,14 +296,36 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            pass  # the window was reloaded or closed before the answer: nothing to do
 
     def _fail(self, e: Exception, serial: str, what: str):
         STATE.log(f"❌ {t(what)}: {core.short_error(e)}", serial)
         applog.exception(e, serial)
         return self._send(200, {"error": core.short_error(e)})
 
+    def _safely(self, handler) -> None:
+        """No request may take the server down or leave the window without an answer."""
+        try:
+            handler()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            pass
+        except Exception as e:
+            applog.exception(e)
+            try:
+                self._send(500, {"error": core.short_error(e)})
+            except Exception:
+                pass
+
     def do_GET(self):
+        self._safely(self._do_get)
+
+    def do_POST(self):
+        self._safely(self._do_post)
+
+    def _do_get(self):
         if self.path == "/api/history":
             return self._send(200, history.summary())
         if self.path == "/":
@@ -325,9 +357,9 @@ class Handler(BaseHTTPRequestHandler):
             # Polled every few seconds: cheap usbmux listing, full labels only for new devices
             # or when the page asks for a refresh.
             try:
-                serials = STATE.run(core.connected_serials())
+                serials = STATE.run(core.connected_serials(), timeout=10)
                 if "full=1" in self.path or any(s not in STATE.labels for s in serials):
-                    STATE.labels = {d.serial: d.label() for d in STATE.run(core.list_devices())}
+                    STATE.labels = {d.serial: d.label() for d in STATE.run(core.list_devices(), timeout=30)}
                 STATE.last_device_error = ""
                 return self._send(200, [{"serial": s, "label": STATE.labels.get(s, s)} for s in serials])
             except Exception as e:
@@ -339,12 +371,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"error": msg})
         self._send(404, {"error": "not found"})
 
-    def do_POST(self):
+    def _do_post(self):
         # Only accept requests from our own page (blocks other websites from poking the API).
         if self.headers.get("Origin") not in (None, f"http://127.0.0.1:{self.server.server_port}"):
             return self._send(403, {"error": "forbidden"})
-        length = int(self.headers.get("Content-Length", 0))
-        d = json.loads(self.rfile.read(length) or b"{}")
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            d = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(d, dict):
+                raise ValueError("not an object")
+        except ValueError:
+            return self._send(400, {"error": "bad request"})
 
         if self.path == "/api/settings":
             return self._send(200, settings.load())
@@ -461,7 +498,7 @@ class Handler(BaseHTTPRequestHandler):
             STATE.log("Диагностика: проверяю…", serial)
             try:
                 parts: dict = {}
-                res = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy, parts_out=parts))
+                res = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy, parts_out=parts), timeout=180)
                 res += _parts_checks(serial, parts)
                 _record_checks(serial, "Диагностика", res)
                 return self._send(200, res)
@@ -473,7 +510,7 @@ class Handler(BaseHTTPRequestHandler):
                 info = STATE.run(core.get_device_details(serial))
                 history.update_device(info)
                 parts = {}
-                results = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy, parts_out=parts))
+                results = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy, parts_out=parts), timeout=180)
                 results += _parts_checks(serial, parts)
                 _record_checks(serial, "Диагностика", results)
                 path = report.build_pdf(info, results, STATE.steps, lang=i18n.get_lang())
@@ -567,7 +604,7 @@ def _driver_status() -> dict:
     mux_devices = None
     if driver.supported():
         try:
-            mux_devices = len(STATE.run(core.connected_serials()))
+            mux_devices = len(STATE.run(core.connected_serials(), timeout=10))
         except Exception:
             mux_devices = None
     facts = driver.collect(mux_devices)
