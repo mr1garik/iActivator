@@ -1,6 +1,7 @@
 """PDF report about one iPhone: identity, battery, locks and the fault check, with date and time."""
 from __future__ import annotations
 
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -98,9 +99,14 @@ def _pairs(pdf: FPDF, rows: list) -> None:
             pdf.set_font("ui", "", 8.5)
             pdf.set_text_color(*MUTED)
             pdf.cell(col, 4.5, k, new_x="LEFT", new_y="NEXT")
-            pdf.set_font("ui", "B", 10.5)
+            text = str(v if v not in (None, "") else "—")
+            size = 10.5
+            pdf.set_font("ui", "B", size)
+            while size > 7 and pdf.get_string_width(text) > col - 4:  # keep a gap before the next column
+                size -= 0.5
+                pdf.set_font("ui", "B", size)
             pdf.set_text_color(*INK)
-            pdf.cell(col, 5.5, str(v if v not in (None, "") else "—"))
+            pdf.cell(col, 5.5, text)
         pdf.set_xy(pdf.l_margin, y + 12)
 
 
@@ -153,6 +159,14 @@ def _steps(pdf: FPDF, steps: list) -> None:
         pdf.ln(1.2)
 
 
+def _capacity(text):
+    """A storage size in the report's language, even if it was read while another language was on."""
+    if not text:
+        return text
+    m = re.fullmatch(r"\s*(\d+)\s*(ГБ|ТБ|GB|TB)\s*", str(text))
+    return t("{n} ТБ" if m.group(2) in ("ТБ", "TB") else "{n} ГБ", n=m.group(1)) if m else text
+
+
 def build_pdf(info: dict, results: list, steps: list | None = None, lang: str = "ru") -> Path:
     set_lang(lang)
     now = datetime.now()
@@ -178,9 +192,8 @@ def build_pdf(info: dict, results: list, steps: list | None = None, lang: str = 
     pdf.set_y(34)
 
     # Device
-    title = info.get("model_name") or info.get("model") or "iPhone"
-    if info.get("capacity"):
-        title += f", {info['capacity']}"
+    model = t(info.get("model_name") or "") or info.get("model") or "iPhone"
+    title = model + (f", {_capacity(info['capacity'])}" if info.get("capacity") else "")
     pdf.set_font("ui", "B", 20)
     pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT")
 
@@ -201,9 +214,9 @@ def build_pdf(info: dict, results: list, steps: list | None = None, lang: str = 
     rows = [(t("Серийный номер"), info.get("serial")), (t("IMEI"), info.get("imei"))]
     if info.get("imei2"):
         rows.append((t("IMEI 2"), info["imei2"]))
-    rows += [(t("Модель"), f"{info.get('model_name')} ({info.get('model')})"),
+    rows += [(t("Модель"), f"{model} ({info.get('model')})"),
              (t("iOS"), f"{info.get('ios')} ({info.get('build')})" if info.get("ios") else None),
-             (t("Память"), info.get("capacity")),
+             (t("Память"), _capacity(info.get("capacity"))),
              (t("Активация"), t(str(ACTIVATION_RU.get(info.get("activation"), info.get("activation") or "—"))).capitalize()),
              (t("Модем"), info.get("baseband"))]
     _pairs(pdf, rows)

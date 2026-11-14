@@ -121,11 +121,12 @@ The app will not activate an iPhone with Activation Lock (iCloud) enabled: the o
 - On launch the app quietly checks GitHub. If a new version is out, a bar appears at the top of the Activation tab.
 - **One-click auto-update:** press **"Download & install"** — the app downloads the new version, replaces itself and restarts. No manual reinstall.
 - Check manually: About → Check for updates.
+- **Coming from v3.0?** Download the new version once from the [Releases page](https://github.com/mr1garik/iActivator/releases/latest) and replace the app. The one-click update in v3.0 is turned off for safety (on macOS it could leave an app that doesn't start); from v3.1 on it works again.
 - Before installing, the download is checked (size and checksum), so a cut-off download can't replace a working app. The previous version is kept in the data folder (`previous-version`) in case you need to go back.
 - An update replaces only the app itself. Device history and settings live in a separate data folder and are never lost on update.
 
 ## Download & build
-- **Just want the app?** Grab the latest `iActivator.exe` (Windows) or `iActivator-mac.zip` (macOS) from the [Releases page](https://github.com/mr1garik/iActivator/releases/latest).
+- **Just want the app?** Grab the latest `iActivator-windows.exe` (Windows) or `iActivator-macos.zip` (macOS) from the [Releases page](https://github.com/mr1garik/iActivator/releases/latest).
 - **Mac:** `dist/iActivator.app` — move it to Applications. Built locally with `./build_mac.sh`.
 - **Windows:** `iActivator.exe` — built on a Windows machine by double-clicking `build_windows.bat` (needs Python from python.org). You'll also need "Apple Devices" from the Microsoft Store or iTunes to talk to the iPhone.
 - **Build both from GitHub:** upload the folder and run the **build** workflow on the Actions tab — GitHub builds the `.exe` and the Mac version and publishes a release.

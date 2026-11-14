@@ -36,12 +36,12 @@ class VerifyDownload(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
 
     def exe(self, body: bytes) -> Path:
-        p = self.dir / "iActivator.exe"
+        p = self.dir / update.ASSET_WINDOWS
         p.write_bytes(body)
         return p
 
     def zip(self, with_app=True, size=BIG) -> Path:
-        p = self.dir / "iActivator-mac.zip"
+        p = self.dir / update.ASSET_MACOS
         with zipfile.ZipFile(p, "w", zipfile.ZIP_STORED) as z:
             z.writestr("iActivator.app/Contents/MacOS/iActivator" if with_app else "readme.txt", b"x" * size)
         return p
@@ -145,6 +145,52 @@ class MacHelper(unittest.TestCase):
         (self.backup / "version").write_text("ancient")
         self.run_helper()
         self.assertEqual((self.backup / "version").read_text(), "old")
+
+
+class ReleaseNames(unittest.TestCase):
+    def test_names_differ_from_the_ones_v3_0_looks_for(self):
+        # v3.0's installer must never find these files (see update.ASSET_* comment).
+        self.assertNotIn(update.ASSET_WINDOWS, ("iActivator.exe", "iActivator-mac.zip"))
+        self.assertNotIn(update.ASSET_MACOS, ("iActivator.exe", "iActivator-mac.zip"))
+        workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text()
+        self.assertIn(update.ASSET_WINDOWS, workflow)
+        self.assertIn(update.ASSET_MACOS, workflow)
+
+
+@unittest.skipIf(sys.platform == "win32" or not shutil.which("zip") or not shutil.which("unzip"), "needs zip/unzip")
+class ExtractedApp(unittest.TestCase):
+    """The v3.0 bug: Python's zipfile drops the executable flag, so the updated app cannot start."""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        app = self.dir / "src" / "iActivator.app"
+        (app / "Contents" / "MacOS").mkdir(parents=True)
+        main = app / "Contents" / "MacOS" / "iActivator"
+        main.write_bytes(b"\xcf\xfa\xed\xfe")
+        main.chmod(0o755)
+        (app / "Contents" / "Frameworks").mkdir()
+        os.symlink("../MacOS/iActivator", app / "Contents" / "Frameworks" / "link")
+        self.zip = self.dir / update.ASSET_MACOS
+        subprocess.run(["zip", "-qry", str(self.zip), "iActivator.app"], cwd=app.parent, check=True)
+
+    def test_python_extraction_is_refused(self):
+        out = self.dir / "py"
+        with zipfile.ZipFile(self.zip) as z:
+            z.extractall(out)
+        with self.assertRaises(update.UpdateError):
+            update._check_extracted_app(out)
+
+    def test_extraction_that_keeps_permissions_is_accepted(self):
+        out = self.dir / "unz"
+        subprocess.run(["unzip", "-q", str(self.zip), "-d", str(out)], check=True)  # keeps flags like ditto
+        app = update._check_extracted_app(out)
+        self.assertEqual(app.name, "iActivator.app")
+        self.assertTrue((app / "Contents" / "Frameworks" / "link").is_symlink())
+
+    def test_archive_without_app_is_refused(self):
+        with self.assertRaises(update.UpdateError):
+            update._check_extracted_app(self.dir / "empty-folder-does-not-exist")
 
 
 if __name__ == "__main__":
