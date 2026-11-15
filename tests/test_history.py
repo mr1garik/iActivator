@@ -121,3 +121,19 @@ class Journal(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ModelNames(unittest.TestCase):
+    def test_stored_identifier_gets_the_name_known_now(self):
+        d = Path(tempfile.mkdtemp())
+        orig = (history.json_path, history.csv_path)
+        history.json_path = lambda: d / "history.json"
+        history.csv_path = lambda: d / "history.csv"
+        try:
+            (d / "history.json").write_text(json.dumps({"X": {"id": "X", "serial": "S", "model": "iPad6,7",
+                                                              "model_name": "iPad6,7", "events": []}}))
+            history._reset_cache()
+            self.assertEqual(history.export()["X"]["model_name"], "iPad Pro 12.9″ (2015)")
+        finally:
+            history.json_path, history.csv_path = orig
+            history._reset_cache()

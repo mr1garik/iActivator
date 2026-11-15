@@ -122,6 +122,12 @@
   .ev { display:grid; grid-template-columns:130px 14px 150px 1fr; gap:8px; padding:4px 0; align-items:start; }
   .ev .st { margin-top:6px; } .ev time { color:var(--muted); font-size:12px; } .ev small { color:var(--muted); }
   tr.events td { background:var(--field); border-top:0; padding:8px 16px; }
+  .note-line { margin-top:4px; font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
+  .note-line::before { content:"✎ "; color:var(--muted); }
+  .note-edit { display:grid; grid-template-columns:130px 1fr; gap:8px; align-items:start; margin:4px 0 10px; }
+  .note-edit span { font-size:12px; color:var(--muted); padding-top:6px; }
+  .note-edit textarea { width:100%; resize:vertical; font:inherit; font-size:13px; }
+  .note-edit small { grid-column:2; font-size:11px; }
   @media (max-width: 860px) { .stats { grid-template-columns:1fr 1fr; } .ev { grid-template-columns:1fr; } .le { grid-template-columns:56px 10px 1fr; } .le .sn { display:none; } }
   #log { font:11.5px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; max-height:calc(100vh - 220px); overflow:auto; margin:0; }
   .le { display:grid; grid-template-columns:62px 10px 104px 1fr; gap:8px; padding:2px 0; align-items:start; }
@@ -557,7 +563,8 @@ const T_EN = {
   "Модель": "Model", "Серийный №": "Serial no.", "Последнее действие": "Last action",
   "Пока пусто — устройства появятся здесь после подключения.": "Empty for now — devices will appear here once connected.",
   "Ничего не найдено": "Nothing found", "Удалить из истории": "Delete from history", "Событий нет": "No events",
-  "Сохранить TXT": "Save TXT", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
+  "Сохранить TXT": "Save TXT", "Заметка": "Note",
+  "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
   "Удалить историю устройств, TXT-файлы и PDF-отчёты": "Delete the device history, TXT files and PDF reports",
   "Файлов TXT и PDF": "TXT and PDF files", "Файлов TXT и PDF нет": "No TXT or PDF files",
@@ -633,7 +640,7 @@ const T_EN = {
   "Готовлю PDF-отчёт: проверяю iPhone… (до минуты)": "Preparing the PDF report: checking the iPhone… (up to a minute)",
   "(не сохранена)": "(not saved)", "Найдены неисправности": "Faults found", "Есть замечания": "Warnings",
   "Загружено языков": "Languages loaded", "Событий нет": "No events", "событий": "events",
-  "батарея": "battery", "Сохранено": "Saved", "Загружено": "Loaded",
+  "новая батарея": "new battery", "батарея": "battery", "Сохранено": "Saved", "Загружено": "Loaded",
   "Записи журнала скопированы": "Journal entries copied",
   "✅ Журнал выгружен в файл": "✅ Journal exported to file",
   "Адрес": "Address", "скопирован": "copied", "Введите имя сети": "Enter a network name",
@@ -737,7 +744,8 @@ const T_UK = {
   "Модель": "Модель", "Серийный №": "Серійний №", "Последнее действие": "Остання дія",
   "Пока пусто — устройства появятся здесь после подключения.": "Поки порожньо — пристрої з'являться тут після підключення.",
   "Ничего не найдено": "Нічого не знайдено", "Удалить из истории": "Видалити з історії", "Событий нет": "Подій немає",
-  "Сохранить TXT": "Зберегти TXT", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
+  "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
+  "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
   "Удалить историю устройств, TXT-файлы и PDF-отчёты": "Видалити історію пристроїв, TXT-файли та PDF-звіти",
   "Файлов TXT и PDF": "Файлів TXT і PDF", "Файлов TXT и PDF нет": "Файлів TXT і PDF немає",
@@ -807,7 +815,7 @@ const T_UK = {
   "Готовлю PDF-отчёт: проверяю iPhone… (до минуты)": "Готую PDF-звіт: перевіряю iPhone… (до хвилини)",
   "(не сохранена)": "(не збережена)", "Найдены неисправности": "Знайдено несправності", "Есть замечания": "Є зауваження",
   "Загружено языков": "Завантажено мов", "событий": "подій",
-  "батарея": "батарея", "Сохранено": "Збережено", "Загружено": "Завантажено",
+  "новая батарея": "нова батарея", "батарея": "батарея", "Сохранено": "Збережено", "Загружено": "Завантажено",
   "✅ Журнал выгружен в файл": "✅ Журнал вивантажено у файл",
   "Адрес": "Адреса", "скопирован": "скопійовано", "Введите имя сети": "Введіть ім'я мережі",
   "Доступна новая версия": "Доступна нова версія", "у вас": "у вас",
@@ -1122,7 +1130,8 @@ async function loadInfo(record) {
   if (b) {
     if (b.health != null) {
       const cls = b.health >= 85 ? "good" : b.health >= 80 ? "warn" : "bad";
-      items.push(["Ёмкость батареи", `<span class="${cls}">${b.health}%</span> · ${b.full_mah}/${b.design_mah} ${T("мАч")}`]);
+      items.push(["Ёмкость батареи", `<span class="${cls}">${Math.min(b.health, 100)}%</span> · ${b.full_mah}/${b.design_mah} ${T("мАч")}`
+        + (b.health > 100 ? ` · ${T("новая батарея")}` : "")]);
     }
     if (b.level != null) items.push(["Заряд", `${b.level}%${b.charging ? " ⚡" : ""}`]);
     if (b.cycles != null) items.push(["Циклы", esc(b.cycles)]);
@@ -1362,7 +1371,7 @@ $("filesClear").onclick = async () => {
 const HIST_LIMIT = 300;  // rows drawn at once; the rest is reached through the search
 function renderHistory() {
   const q = $("histSearch").value.trim().toLowerCase();
-  const list = hist.devices.filter(d => !q || [d.serial, d.id, d.imei, d.imei2, d.model, d.model_name && T(d.model_name), d.name]
+  const list = hist.devices.filter(d => !q || [d.serial, d.id, d.imei, d.imei2, d.model, d.model_name && T(d.model_name), d.name, d.note]
     .some(v => v && v.toLowerCase().includes(q)));
   const more = list.length > HIST_LIMIT;
   $("histEmpty").style.display = list.length && !more ? "none" : "";
@@ -1372,17 +1381,38 @@ function renderHistory() {
     const key = d.id || d.serial;
     const last = d.events[d.events.length - 1];
     const row = `<tr class="dev-row" data-key="${esc(key)}">
-      <td><b>${esc(T(d.model_name) || d.model || "—")}</b>${d.capacity ? " · " + esc(cap(d.capacity)) : ""}<br><small class="empty">iOS ${esc(d.ios || "—")}${d.battery != null ? " · " + T("батарея") + " " + d.battery + "%" : ""}</small></td>
+      <td><b>${esc(T(d.model_name) || d.model || "—")}</b>${d.capacity ? " · " + esc(cap(d.capacity)) : ""}<br><small class="empty">iOS ${esc(d.ios || "—")}${d.battery != null ? " · " + T("батарея") + " " + Math.min(d.battery, 100) + "%" : ""}</small>${d.note ? `<div class="note-line">${esc(d.note)}</div>` : ""}</td>
       <td class="mono">${esc(d.serial || d.id)}</td>
       <td class="mono">${esc(d.imei)}${d.imei2 ? "<br>" + esc(d.imei2) : ""}</td>
       <td>${last ? `<div style="display:flex;gap:8px">${dot(RES[last.result])}<div><b>${esc(T(last.action))}</b><br><small class="empty">${esc(last.time)} · ${T("событий")}: ${d.events.length}</small></div></div>` : "—"}</td></tr>`;
     if (openRow !== key) return row;
     const evs = [...d.events].reverse().map(e => `<div class="ev"><time>${esc(e.time)}</time>${dot(RES[e.result])}<b>${esc(T(e.action))}</b><small>${esc(T(e.detail || ""))}</small></div>`).join("");
-    return row + `<tr class="events"><td colspan="4">${evs || `<span class="empty">${T("Событий нет")}</span>`}
+    return row + `<tr class="events"><td colspan="4">
+      <label class="note-edit"><span>${T("Заметка")}</span><textarea data-note="${esc(key)}" maxlength="1000" rows="2"
+        placeholder="${T("Цена, клиент, дефекты… Видно в TXT, PDF и поиске")}">${esc(d.note || "")}</textarea><small class="empty" data-note-state></small></label>
+      ${evs || `<span class="empty">${T("Событий нет")}</span>`}
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px"><button data-txt="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Сохранить TXT")}</button><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
   }).join("");
 }
 $("histSearch").oninput = renderHistory;
+// Notes save on their own a moment after typing stops (and when leaving the field).
+let noteTimer;
+async function saveNote(el) {
+  clearTimeout(noteTimer);
+  const key = el.dataset.note, text = el.value.trim();
+  const d = hist.devices.find(x => (x.id || x.serial) === key);
+  if (!d || (d.note || "") === text) return;
+  const res = await api("/api/history/note", { serial: key, note: text });
+  const state = el.parentElement.querySelector("[data-note-state]");
+  if (res.error) { if (state) state.textContent = res.error; return; }
+  d.note = text;
+  if (state) state.textContent = T("Сохранено");
+}
+$("histBody").addEventListener("input", e => {
+  const el = e.target.closest("[data-note]");
+  if (el) { clearTimeout(noteTimer); noteTimer = setTimeout(() => saveNote(el), 700); }
+});
+$("histBody").addEventListener("focusout", e => { const el = e.target.closest("[data-note]"); if (el) saveNote(el); });
 $("histOpen").onclick = () => api("/api/history/open", {});
 $("reportsOpen").onclick = () => api("/api/reports/open", {});
 async function makeReport() {
@@ -1410,6 +1440,7 @@ $("histBody").onclick = async e => {
     await api("/api/history/delete", { serial: del.dataset.del });
     openRow = null; return loadHistory();
   }
+  if (e.target.closest(".note-edit")) return;
   const tr = e.target.closest("tr.dev-row");
   if (tr) { openRow = openRow === tr.dataset.key ? null : tr.dataset.key; renderHistory(); }
 };

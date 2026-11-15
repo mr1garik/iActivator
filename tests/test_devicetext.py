@@ -56,6 +56,23 @@ class DeviceText(unittest.TestCase):
                      "Батарея: F5D1234", "Батарея (здоровье): 83%", "✓ Активация", "· Подключение: не активирован"):
             self.assertIn(part, s)
 
+    def test_battery_above_100_is_shown_as_a_new_battery(self):
+        s = devicetext.render(dict(PHONE, battery=104))
+        self.assertIn("100% (новая батарея)", s)
+        self.assertNotIn("104", s)
+
+    def test_note_is_kept_and_shown(self):
+        self.assertTrue(history.set_note(PHONE["id"], "  Цена 900$, царапина  "))
+        self.assertEqual(history.note(PHONE["id"]), "Цена 900$, царапина")
+        self.assertIn("Заметка:\nЦена 900$, царапина", devicetext.render(history.export()[PHONE["id"]]))
+        history.flush_csv()
+        self.assertIn("Цена 900$, царапина", history.csv_path().read_text(encoding="utf-8-sig"))
+        history.set_note(PHONE["id"], "")
+        self.assertNotIn("note", history.export()[PHONE["id"]])
+        self.assertFalse(history.set_note("unknown", "x"))
+        history.set_note(PHONE["id"], "x" * 5000)
+        self.assertEqual(len(history.note(PHONE["id"])), history.NOTE_MAX)
+
     def test_text_follows_the_language(self):
         i18n.set_lang("en")
         s = devicetext.render(PHONE)

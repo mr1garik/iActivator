@@ -40,6 +40,10 @@ def _load() -> dict:
             _cache = _migrate(json.loads(json_path().read_text(encoding="utf-8")))
         except (OSError, ValueError):
             _cache = {}
+        from .models import model_name
+        for d in _cache.values():  # names added in a later version replace stored identifiers
+            if isinstance(d, dict) and d.get("model"):
+                d["model_name"] = model_name(d["model"])
         try:
             if _cache and (not csv_path().exists() or csv_path().stat().st_mtime < json_path().stat().st_mtime):
                 _schedule_csv()  # the table is missing or older than the history
@@ -130,11 +134,11 @@ def _write_csv(data: dict) -> None:
     try:
         with open(csv_path(), "w", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f, delimiter=";")
-            w.writerow([tr(h) for h in ("Дата и время", "Серийный №", "IMEI", "IMEI 2", "Модель", "Память", "iOS", "Действие", "Результат", "Подробности")])
+            w.writerow([tr(h) for h in ("Дата и время", "Серийный №", "IMEI", "IMEI 2", "Модель", "Память", "iOS", "Действие", "Результат", "Подробности", "Заметка")])
             rows = [(e, d) for d in data.values() for e in d.get("events", [])]
             for e, d in sorted(rows, key=lambda r: r[0]["time"]):
                 w.writerow([e["time"], d.get("serial") or d.get("id") or "", d.get("imei") or "", d.get("imei2") or "", tr(d.get("model_name") or d.get("model") or ""),
-                            d.get("capacity") or "", d.get("ios") or "", tr(e["action"]), tr(RESULT.get(e["result"], e["result"])), e.get("detail", "")])
+                            d.get("capacity") or "", d.get("ios") or "", tr(e["action"]), tr(RESULT.get(e["result"], e["result"])), e.get("detail", ""), d.get("note", "")])
     except OSError:
         pass  # the file is open in Excel; it will be rewritten on the next change
 
@@ -226,6 +230,30 @@ def summary() -> dict:
         },
         "csv": str(csv_path()),
     }
+
+
+NOTE_MAX = 1000
+
+
+def set_note(device_id: str, text: str) -> bool:
+    """The user's own note for a phone (price, customer, defects). Empty text removes it."""
+    text = (text or "").strip()[:NOTE_MAX]
+    with _lock:
+        data = _load()
+        d = data.get(device_id)
+        if d is None:
+            return False
+        if text:
+            d["note"] = text
+        else:
+            d.pop("note", None)
+        _save(data)
+    return True
+
+
+def note(device_id: str) -> str:
+    with _lock:
+        return (_load().get(device_id) or {}).get("note", "")
 
 
 def delete(serial: str) -> None:

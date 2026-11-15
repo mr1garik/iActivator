@@ -494,6 +494,10 @@ class Handler(BaseHTTPRequestHandler):
             applog.add(t("История очищена: устройств {d}, файлов {n}, освобождено {size}",
                          d=r["devices"], n=r["removed"], size=_size(r["bytes"])))
             return self._send(200, {**r, "size": _size(r["bytes"])})
+        if self.path == "/api/history/note":
+            if not history.set_note(d.get("serial", ""), str(d.get("note") or "")):
+                return self._send(200, {"error": t("Этого устройства нет в истории.")})
+            return self._send(200, {"ok": True})
         if self.path == "/api/history/delete":
             history.delete(d.get("serial", ""))
             return self._send(200, {"ok": True})
@@ -534,6 +538,7 @@ class Handler(BaseHTTPRequestHandler):
                 results = STATE.run(core.run_health_check(serial, check_activation=not STATE.busy, parts_out=parts), timeout=180)
                 results += _parts_checks(serial, parts)
                 _record_checks(serial, "Диагностика", results)
+                info["note"] = history.note(serial)
                 path = report.build_pdf(info, results, STATE.steps, lang=i18n.get_lang())
                 history.add_event(serial, "PDF-отчёт", "info", path.name)
                 STATE.log(t("📄 Отчёт сохранён: {path}", path=path), serial, "ok")
@@ -566,7 +571,7 @@ class Handler(BaseHTTPRequestHandler):
                 if d.get("record"):
                     b = info.get("battery") or {}
                     detail = (f"{t(ACTIVATION.get(info.get('activation'), info.get('activation')) or '')}, iOS {info.get('ios')} ({info.get('build')})"
-                              + (t(", батарея {h}%", h=b["health"]) if b.get("health") is not None else ""))
+                              + (t(", батарея {h}%", h=min(b["health"], 100)) if b.get("health") is not None else ""))
                     history.add_event(serial, "Подключение", "info", detail)
                     STATE.log(t("Подключён {model}", model=t(info.get("model_name") or "iPhone"))
                               + (f", {info['capacity']}" if info.get("capacity") else "") + f": {detail}", serial)

@@ -219,6 +219,8 @@ def build_pdf(info: dict, results: list, steps: list | None = None, lang: str = 
              (t("Память"), _capacity(info.get("capacity"))),
              (t("Активация"), t(str(ACTIVATION_RU.get(info.get("activation"), info.get("activation") or "—"))).capitalize()),
              (t("Модем"), info.get("baseband"))]
+    if info.get("note"):
+        rows.append((t("Заметка"), info["note"]))
     _pairs(pdf, rows)
 
     b = info.get("battery") or {}
@@ -226,7 +228,8 @@ def build_pdf(info: dict, results: list, steps: list | None = None, lang: str = 
         _section(pdf, t("Батарея"))
         brows = []
         if b.get("health") is not None:
-            brows.append((t("Ёмкость (здоровье)"), f"{b['health']}%"))
+            brows.append((t("Ёмкость (здоровье)"), f"{min(b['health'], 100)}%"
+                          + (f" ({t('новая батарея')})" if b["health"] > 100 else "")))
         if b.get("full_mah"):
             brows.append((t("Текущая / заводская"), f"{b['full_mah']} / {b.get('design_mah')} {t('мАч')}"))
         if b.get("cycles") is not None:

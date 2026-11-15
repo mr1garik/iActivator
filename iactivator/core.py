@@ -570,9 +570,14 @@ async def _activation_lock_status(lockdown) -> Optional[bool]:
             service.post, ACTIVATION_DRM_HANDSHAKE_URL, plistlib.dumps(blob), headers)
         info = await service.create_activation_info_with_session(handshake)
         request = {"activation-info": plistlib.dumps(info)}
-    except Exception:
-        # Older iOS without session activation
-        request = {"activation-info": plistlib.dumps(await lockdown.get_value(key="ActivationInfo"))}
+    except Exception as session_error:
+        # Older iOS without session activation. If that fails too, report the first error:
+        # it says what really went wrong (e.g. no connection to Apple), the second one
+        # ("No such value") only that this iPhone has no old-style activation data.
+        try:
+            request = {"activation-info": plistlib.dumps(await lockdown.get_value(key="ActivationInfo"))}
+        except Exception:
+            raise session_error from None
     content, resp_headers = await asyncio.to_thread(service.post, ACTIVATION_URL, request)
     ctype = resp_headers.get("Content-Type", "")
     if "buddyml" in ctype:
@@ -581,6 +586,30 @@ async def _activation_lock_status(lockdown) -> Optional[bool]:
     if "xml" in ctype:
         return False  # an activation record came back: no lock
     return None
+
+
+NETWORK_ERRORS = {"ConnectionError", "ConnectTimeout", "ReadTimeout", "Timeout", "SSLError", "ProxyError",
+                  "URLError", "gaierror", "TimeoutError", "ConnectionRefusedError", "ConnectionResetError",
+                  "NewConnectionError", "MaxRetryError", "NameResolutionError"}
+
+
+def is_network_error(e: Optional[BaseException]) -> bool:
+    """The computer could not reach Apple (no internet, DNS, proxy, timeout), as opposed
+    to the iPhone refusing or not having what was asked for."""
+    seen = 0
+    while e is not None and seen < 8:
+        if type(e).__name__ in NETWORK_ERRORS:
+            return True
+        e = e.__cause__ or e.__context__
+        seen += 1
+    return False
+
+
+def is_service_unavailable(e: Optional[BaseException]) -> bool:
+    """The iPhone does not offer this service now (e.g. before activation on new iOS)."""
+    text = str(e).lower()
+    return type(e).__name__ in ("InvalidServiceError", "StartServiceError") or \
+        "does not offer the requested service" in text or "invalidservice" in text
 
 
 async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activation: bool = True) -> list[dict]:
@@ -604,8 +633,14 @@ async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activati
             else:
                 results.append(_check("Локатор (блокировка активации)", "warn", "Сервер Apple не дал однозначного ответа"))
         except Exception as e:
-            results.append(_check("Локатор (блокировка активации)", "warn",
-                                  "Не удалось проверить (нужен интернет): {e}", e=short_error(e)))
+            if is_network_error(e):
+                results.append(_check("Локатор (блокировка активации)", "warn",
+                                      "Нет связи с сервером Apple — проверьте интернет на компьютере: {e}",
+                                      e=short_error(e)))
+            else:
+                results.append(_check("Локатор (блокировка активации)", "warn",
+                                      "iPhone не дал проверить ({e}). Проверьте после активации: "
+                                      "Настройки → [имя] → Локатор", e=short_error(e)))
     else:
         results.append(_check("Локатор (блокировка активации)", "info",
                               "Устройство уже активировано — по USB статус не узнать. "
@@ -617,7 +652,11 @@ async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activati
             cc = await mc.get_cloud_configuration() or {}
             profiles = await mc.get_profile_list()
     except Exception as e:
-        results.append(_check("MDM (удалённое управление)", "warn", "Не удалось прочитать: {e}", e=short_error(e)))
+        if v.get("ActivationState") == "Unactivated" and is_service_unavailable(e):
+            results.append(_check("MDM (удалённое управление)", "info",
+                                  "До активации этот iPhone не даёт прочитать — проверьте после активации"))
+        else:
+            results.append(_check("MDM (удалённое управление)", "warn", "Не удалось прочитать: {e}", e=short_error(e)))
         return results
 
     ours = own_cert is not None and own_cert in cc.get("SupervisorHostCertificates", [])
@@ -688,8 +727,10 @@ async def run_health_check(serial: str, check_activation: bool = True,
             else:
                 st = "ok" if h >= 85 else "warn" if h >= 80 else "bad"
                 note = {"ok": "в норме", "warn": "износ заметен", "bad": "рекомендуется замена"}[st]
+                if h > 100:
+                    note = "новая батарея: ёмкость выше заводской, это нормально"
                 results.append(_check("Ёмкость батареи", st, "{h}% ({full} из {design} мАч) — {note}",
-                                      h=h, full=battery["full_mah"], design=battery["design_mah"], note=tr(note)))
+                                      h=min(h, 100), full=battery["full_mah"], design=battery["design_mah"], note=tr(note)))
             if cyc is not None:
                 st = "ok" if cyc < 500 else "warn" if cyc < 1000 else "bad"
                 results.append(_check("Циклы зарядки", st, str(cyc)))

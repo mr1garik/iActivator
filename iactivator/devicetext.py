@@ -46,7 +46,8 @@ def render(d: dict) -> str:
         ("IMEI 2", d.get("imei2")),
         (t("Модель"), d.get("model")),
         ("iOS", d.get("ios")),
-        (t("Батарея (здоровье)"), f"{d['battery']}%" if d.get("battery") is not None else ""),
+        (t("Батарея (здоровье)"), (f"{min(d['battery'], 100)}%" + (f" ({t('новая батарея')})" if d["battery"] > 100 else ""))
+                                       if isinstance(d.get("battery"), (int, float)) else ""),
         (t("Активация"), _activation(d.get("activation"))),
         (t("Имя"), d.get("name")),
         (t("Впервые подключён"), d.get("first_seen")),
@@ -56,6 +57,8 @@ def render(d: dict) -> str:
     width = max(len(k) for k, v in rows if v) if any(v for _, v in rows) else 0
     out = [title, "=" * len(title), ""]
     out += [f"{k + ':':<{width + 1}} {v}" for k, v in rows if v]
+    if d.get("note"):
+        out += ["", t("Заметка") + ":", d["note"]]
 
     parts = (d.get("parts") or {}).get("serials") or {}
     if parts:
