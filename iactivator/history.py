@@ -282,6 +282,18 @@ def clear() -> int:
     return n
 
 
+def remove_older(cutoff: str) -> int:
+    """Forget devices last seen before cutoff ("YYYY-MM-DD HH:MM:SS"). Returns how many."""
+    with _lock:
+        data = _load()
+        old = [k for k, d in data.items() if (d.get("last_seen") or d.get("first_seen") or "") < cutoff]
+        for k in old:
+            del data[k]
+        if old:
+            _save(data)
+    return len(old)
+
+
 def export() -> dict:
     with _lock:
         return copy.deepcopy(_load())

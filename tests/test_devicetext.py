@@ -119,6 +119,26 @@ class DeviceText(unittest.TestCase):
         self.assertEqual(history.export(), {})  # also gone from history.json on disk
         self.assertEqual(devicetext.usage()["files"], 0)
 
+    def test_auto_cleanup_removes_only_old_phones_and_files(self):
+        import time
+        from datetime import datetime
+        recent = dict(PHONE, id="R" * 25, serial="RECENT", last_seen="2026-11-10 10:00:00")
+        with history._lock:
+            history._load()[PHONE["id"]]["last_seen"] = "2026-06-01 10:00:00"
+            history._load()[recent["id"]] = recent
+        old_pdf, new_pdf = self.reports / "old.pdf", self.reports / "new.pdf"
+        old_pdf.write_bytes(b"%PDF"); new_pdf.write_bytes(b"%PDF")
+        t_old = datetime(2026, 6, 1).timestamp()
+        os.utime(old_pdf, (t_old, t_old))
+        now = datetime(2026, 11, 15)
+        os.utime(new_pdf, (now.timestamp(), now.timestamp()))
+        self.assertEqual(devicetext.cleanup(0, now)["devices"], 0)  # off: nothing happens
+        r = devicetext.cleanup(90, now)
+        self.assertEqual((r["devices"], r["removed"]), (1, 1))
+        self.assertEqual(list(history.export()), [recent["id"]])
+        self.assertTrue(new_pdf.exists())
+        self.assertFalse(old_pdf.exists())
+
     def test_clear_with_nothing_there(self):
         self.assertEqual(devicetext.clear_files()["removed"], 0)
 

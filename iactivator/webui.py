@@ -20,7 +20,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import __version__, applog, autostart, core, devicetext, driver, history, i18n, report, settings, tray, update
+from . import __version__, applog, autostart, core, devicetext, driver, history, i18n, notify, report, settings, tray, update
 from .i18n import t
 
 LANGUAGES = [
@@ -210,8 +210,11 @@ async def _with_activator(serial, fn, action, detail=""):
         await fn(act)
         history.add_event(serial, action, "ok", detail)
         STATE.log(t("✅ {action}: готово за {secs} с", action=t(action), secs=f"{time.monotonic() - started:.0f}"), serial)
+        notify.phone_done(STATE.short_label(serial), action, True)
     except Exception as e:
-        history.add_event(serial, action, "error", str(e) if isinstance(e, core.UserFacingError) else core.short_error(e))
+        reason = str(e) if isinstance(e, core.UserFacingError) else core.short_error(e)
+        history.add_event(serial, action, "error", reason)
+        notify.phone_done(STATE.short_label(serial), action, False, reason)
         raise
     finally:
         await act.close()
@@ -412,6 +415,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"autostart": on})
         if self.path == "/api/settings/ui":
             settings.save_ui(d)
+            if "cleanup_days" in d:
+                threading.Thread(target=_auto_cleanup, daemon=True).start()
             if d.get("lang") in settings.LANGS:
                 i18n.set_lang(d["lang"])
             if d.get("theme"):
@@ -790,6 +795,26 @@ def _window_geometry(webview):
     return w, h, x, y, min_size
 
 
+def _auto_cleanup() -> None:
+    try:
+        days = settings.load()["ui"].get("cleanup_days", 0)
+        r = devicetext.cleanup(days)
+        if r["devices"] or r["removed"]:
+            STATE.log(t("Автоочистка (старше {days} дн.): устройств {d}, файлов {n}, освобождено {size}",
+                        days=days, d=r["devices"], n=r["removed"], size=_size(r["bytes"])))
+    except Exception as e:
+        applog.exception(e)
+
+
+def _start_auto_cleanup() -> None:
+    """At start and then every 6 hours (the app may stay open for days)."""
+    def loop():
+        while True:
+            _auto_cleanup()
+            time.sleep(6 * 3600)
+    threading.Thread(target=loop, daemon=True).start()
+
+
 def main():
     # Trim Edge WebView2 (Chromium) memory on Windows: no GPU process, smaller JS heap.
     # Must be set before the WebView2 environment starts. Harmless on macOS (WebKit).
@@ -813,6 +838,7 @@ def main():
     except Exception:
         pass  # never block the start over the start-up entry
     i18n.set_lang(settings.load()["ui"].get("lang", "ru"))
+    _start_auto_cleanup()
     STATE.log(t("iActivator {v} запущен · {sys} · Python {py}", v=__version__,
                 sys=f"{platform.system()} {platform.release()}", py=platform.python_version()),
               level="debug")

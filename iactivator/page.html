@@ -400,6 +400,21 @@
           <option value="en">English</option>
         </select></div>
     </div>
+    <div class="card">
+      <h2>Уведомления и хранение</h2>
+      <label class="sw"><input type="checkbox" id="notifyOn"><span class="t">Звук и уведомление, когда iPhone готов
+        <small>После активации или ошибки — можно заниматься другим, пока идёт очередь</small></span></label>
+      <div class="row"><span class="lbl">Автоочистка</span>
+        <select id="cleanupDays" style="max-width:320px">
+          <option value="0">Выключена — хранить всё</option>
+          <option value="30">Удалять старше 30 дней</option>
+          <option value="90">Удалять старше 90 дней</option>
+          <option value="180">Удалять старше 180 дней</option>
+          <option value="365">Удалять старше 1 года</option>
+        </select></div>
+      <p class="hint">Удаляются телефоны, которые давно не подключались, и старые TXT-файлы и PDF-отчёты.
+        Проверка — при запуске программы и каждые 6 часов.</p>
+    </div>
     <div class="card" id="startupCard" style="display:none">
       <h2>Запуск</h2>
       <label class="sw"><input type="checkbox" id="autostart"><span class="t">Запускать вместе с Windows<small>Программа откроется сама при включении компьютера</small></span></label>
@@ -563,6 +578,16 @@ const T_EN = {
   "Модель": "Model", "Серийный №": "Serial no.", "Последнее действие": "Last action",
   "Пока пусто — устройства появятся здесь после подключения.": "Empty for now — devices will appear here once connected.",
   "Ничего не найдено": "Nothing found", "Удалить из истории": "Delete from history", "Событий нет": "No events",
+  "Уведомления и хранение": "Notifications and storage",
+  "Звук и уведомление, когда iPhone готов": "Sound and notification when an iPhone is done",
+  "После активации или ошибки — можно заниматься другим, пока идёт очередь": "After activation or an error — do something else while the queue runs",
+  "Автоочистка": "Auto cleanup", "Выключена — хранить всё": "Off — keep everything",
+  "Удалять старше 30 дней": "Delete older than 30 days", "Удалять старше 90 дней": "Delete older than 90 days",
+  "Удалять старше 180 дней": "Delete older than 180 days", "Удалять старше 1 года": "Delete older than 1 year",
+  "Удаляются телефоны, которые давно не подключались, и старые TXT-файлы и PDF-отчёты.": "Removes phones not connected for that long, and old TXT files and PDF reports.",
+  "Проверка — при запуске программы и каждые 6 часов.": "Checked when the app starts and every 6 hours.",
+  "Телефоны и файлы старше": "Phones and files older than",
+  "дней будут удалены сейчас и дальше автоматически. Продолжить?": "days will be deleted now and automatically from then on. Continue?",
   "Сохранить TXT": "Save TXT", "Заметка": "Note",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
@@ -744,6 +769,16 @@ const T_UK = {
   "Модель": "Модель", "Серийный №": "Серійний №", "Последнее действие": "Остання дія",
   "Пока пусто — устройства появятся здесь после подключения.": "Поки порожньо — пристрої з'являться тут після підключення.",
   "Ничего не найдено": "Нічого не знайдено", "Удалить из истории": "Видалити з історії", "Событий нет": "Подій немає",
+  "Уведомления и хранение": "Сповіщення та зберігання",
+  "Звук и уведомление, когда iPhone готов": "Звук і сповіщення, коли iPhone готовий",
+  "После активации или ошибки — можно заниматься другим, пока идёт очередь": "Після активації або помилки — можна займатися іншим, поки йде черга",
+  "Автоочистка": "Автоочищення", "Выключена — хранить всё": "Вимкнено — зберігати все",
+  "Удалять старше 30 дней": "Видаляти старші за 30 днів", "Удалять старше 90 дней": "Видаляти старші за 90 днів",
+  "Удалять старше 180 дней": "Видаляти старші за 180 днів", "Удалять старше 1 года": "Видаляти старші за 1 рік",
+  "Удаляются телефоны, которые давно не подключались, и старые TXT-файлы и PDF-отчёты.": "Видаляються телефони, які давно не підключалися, і старі TXT-файли та PDF-звіти.",
+  "Проверка — при запуске программы и каждые 6 часов.": "Перевірка — під час запуску програми та кожні 6 годин.",
+  "Телефоны и файлы старше": "Телефони та файли старші за",
+  "дней будут удалены сейчас и дальше автоматически. Продолжить?": "днів буде видалено зараз і далі автоматично. Продовжити?",
   "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
@@ -1161,6 +1196,8 @@ function fillNets() {
 async function loadSettings(applyLast) {
   const s = await api("/api/settings", {});
   applyTheme(s.ui.theme);
+  $("notifyOn").checked = s.ui.notify !== false;
+  $("cleanupDays").value = String(s.ui.cleanup_days || 0);
   if (["ru", "en", "uk"].includes(s.ui.lang)) { LANG = s.ui.lang; try { localStorage.setItem("lang", LANG); } catch {} }
   networks = s.networks;
   fillNets();
@@ -1546,6 +1583,15 @@ async function init() {
   await loadSettings(true);
   updateWifiHint();
   $("uiLang").value = LANG;
+  $("notifyOn").onchange = () => api("/api/settings/ui", { notify: $("notifyOn").checked });
+  $("cleanupDays").onchange = async () => {
+    const days = Number($("cleanupDays").value);
+    if (days && !confirm(`${T("Телефоны и файлы старше")} ${days} ${T("дней будут удалены сейчас и дальше автоматически. Продолжить?")}`)) {
+      const s = await api("/api/settings", {}); $("cleanupDays").value = String(s.ui.cleanup_days || 0); return;
+    }
+    await api("/api/settings/ui", { cleanup_days: days });
+    setTimeout(loadHistory, 1500);
+  };
   $("uiLang").onchange = async () => { const v = $("uiLang").value; await api("/api/settings/ui", { lang: v }); applyLang(v); };
   document.documentElement.lang = LANG;
   if (LANG !== "ru") { translateStatic(); $("status").textContent = T("Готово"); }

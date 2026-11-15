@@ -425,6 +425,9 @@ EN: dict[str, str] = {
     "новая батарея: ёмкость выше заводской, это нормально": "new battery: capacity above the factory rating, this is normal",
     "новая батарея": "new battery",
     "Заметка": "Note",
+    "{action}: готово": "{action}: done",
+    "{action}: ошибка": "{action}: error",
+    "Автоочистка (старше {days} дн.): устройств {d}, файлов {n}, освобождено {size}": "Auto cleanup (older than {days} days): {d} devices, {n} files, {size} freed",
 }
 
 # Russian source -> Ukrainian.
@@ -810,4 +813,7 @@ UK: dict[str, str] = {
     "новая батарея: ёмкость выше заводской, это нормально": "нова батарея: ємність вища за заводську, це нормально",
     "новая батарея": "нова батарея",
     "Заметка": "Нотатка",
+    "{action}: готово": "{action}: готово",
+    "{action}: ошибка": "{action}: помилка",
+    "Автоочистка (старше {days} дн.): устройств {d}, файлов {n}, освобождено {size}": "Автоочищення (старше {days} дн.): пристроїв {d}, файлів {n}, звільнено {size}",
 }

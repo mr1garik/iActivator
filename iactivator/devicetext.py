@@ -146,6 +146,32 @@ def clear_files() -> dict:
     return {"removed": removed, "bytes": freed}
 
 
+def cleanup(days: int, now: datetime | None = None) -> dict:
+    """Automatic cleanup: forget phones not seen for `days` days and delete TXT/PDF files
+    older than that. Does nothing when days is 0."""
+    if not days:
+        return {"removed": 0, "bytes": 0, "devices": 0}
+    from datetime import timedelta
+    now = now or datetime.now()
+    cutoff = now - timedelta(days=days)
+    removed = freed = 0
+    for folder in _folders():
+        if not folder.is_dir():
+            continue
+        for p in folder.iterdir():
+            try:
+                if p.is_file() and p.suffix.lower() in (".txt", ".pdf") and \
+                        datetime.fromtimestamp(p.stat().st_mtime) < cutoff:
+                    size = p.stat().st_size
+                    p.unlink()
+                    removed += 1
+                    freed += size
+            except OSError:
+                pass
+    devices = history.remove_older(cutoff.strftime("%Y-%m-%d %H:%M:%S"))
+    return {"removed": removed, "bytes": freed, "devices": devices}
+
+
 def clear_all() -> dict:
     """Delete the TXT files, the PDF reports and the device history."""
     r = clear_files()

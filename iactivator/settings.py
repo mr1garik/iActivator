@@ -57,6 +57,7 @@ def system_lang() -> str:
 
 SERVICE = "iActivator Wi-Fi"
 THEMES = ("auto", "light", "dark", "night", "mint", "graphite")
+CLEANUP_DAYS = (0, 30, 90, 180, 365)  # 0 = keep everything
 LANGS = ("ru", "en", "uk")
 EXPORT_KIND = "iActivator settings"
 _lock = threading.Lock()
@@ -76,6 +77,8 @@ def load() -> dict:
     data.setdefault("ui", {})
     data["ui"].setdefault("theme", "auto")
     data["ui"].setdefault("lang", system_lang())
+    data["ui"].setdefault("notify", True)
+    data["ui"].setdefault("cleanup_days", 0)
     return data
 
 
@@ -129,6 +132,10 @@ def save_ui(values: dict) -> None:
             data["ui"]["theme"] = values["theme"]
         if values.get("lang") in LANGS:
             data["ui"]["lang"] = values["lang"]
+        if isinstance(values.get("notify"), bool):
+            data["ui"]["notify"] = values["notify"]
+        if values.get("cleanup_days") in CLEANUP_DAYS:
+            data["ui"]["cleanup_days"] = values["cleanup_days"]
         _save(data)
 
 
