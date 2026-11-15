@@ -112,7 +112,13 @@
   .verdict.good { background:var(--good); } .verdict.warn { background:var(--warn); } .verdict.bad { background:var(--danger); }
 
   .stats { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
-  .stat { background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow); border-radius:14px; padding:12px 16px; }
+  .stat { background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow); border-radius:14px; padding:12px 16px;
+          text-align:left; font:inherit; color:inherit; cursor:pointer; height:auto; display:block; }
+  .stat:hover { border-color:var(--brand); }
+  .stat.on { border-color:var(--brand); box-shadow:0 0 0 1px var(--brand) inset; }
+  .hist-filters { margin-top:8px; align-items:center; }
+  .hist-filters select { max-width:200px; }
+  .hist-filters #histShown { font-size:12px; }
   .stat b { display:block; font-size:24px; font-weight:600; letter-spacing:-.02em; } .stat span { color:var(--muted); font-size:12px; }
   table { width:100%; border-collapse:collapse; }
   th { text-align:left; font-weight:500; color:var(--muted); font-size:11.5px; padding:6px 8px; }
@@ -341,14 +347,31 @@
   <section class="page" id="p-history">
     <h1>История</h1>
     <div class="stats">
-      <div class="stat"><b id="sTotal">0</b><span>Всего устройств</span></div>
-      <div class="stat"><b id="sToday">0</b><span>Сегодня</span></div>
-      <div class="stat"><b id="sActivated">0</b><span>Активировано</span></div>
-      <div class="stat"><b id="sFaulty">0</b><span>С замечаниями</span></div>
+      <button class="stat" data-filter="all|all"><b id="sTotal">0</b><span>Всего устройств</span></button>
+      <button class="stat" data-filter="today|all"><b id="sToday">0</b><span>Сегодня</span></button>
+      <button class="stat" data-filter="all|activated"><b id="sActivated">0</b><span>Активировано</span></button>
+      <button class="stat" data-filter="all|issues"><b id="sFaulty">0</b><span>С замечаниями</span></button>
     </div>
     <div class="card">
       <div class="row" style="margin-top:0">
         <input type="text" id="histSearch" placeholder="Поиск по серийному номеру, IMEI или модели">
+      </div>
+      <div class="row hist-filters">
+        <select id="histPeriod" title="За какое время">
+          <option value="all">За всё время</option>
+          <option value="today">Сегодня</option>
+          <option value="week">За 7 дней</option>
+          <option value="month">За 30 дней</option>
+        </select>
+        <select id="histResult" title="Какие телефоны показать">
+          <option value="all">Все телефоны</option>
+          <option value="activated">Активированы</option>
+          <option value="notactivated">Без активации</option>
+          <option value="issues">С замечаниями</option>
+          <option value="errors">С любой ошибкой</option>
+          <option value="note">С заметкой</option>
+        </select>
+        <span id="histShown" class="empty"></span>
         <button id="histOpen" title="Файл со всей историей — открывается в Excel"><svg><use href="#i-folder"/></svg>Открыть файл</button>
         <button id="reportsOpen" title="Папка с PDF-отчётами"><svg><use href="#i-file"/></svg>Отчёты</button>
       </div>
@@ -588,6 +611,9 @@ const T_EN = {
   "Проверка — при запуске программы и каждые 6 часов.": "Checked when the app starts and every 6 hours.",
   "Телефоны и файлы старше": "Phones and files older than",
   "дней будут удалены сейчас и дальше автоматически. Продолжить?": "days will be deleted now and automatically from then on. Continue?",
+  "За какое время": "Time period", "За всё время": "All time", "За 7 дней": "Last 7 days", "За 30 дней": "Last 30 days",
+  "Какие телефоны показать": "Which phones to show", "Все телефоны": "All phones", "Активированы": "Activated",
+  "Без активации": "Not activated", "С любой ошибкой": "With any error", "С заметкой": "With a note", "Показано": "Shown",
   "Сохранить TXT": "Save TXT", "Заметка": "Note",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
@@ -779,6 +805,9 @@ const T_UK = {
   "Проверка — при запуске программы и каждые 6 часов.": "Перевірка — під час запуску програми та кожні 6 годин.",
   "Телефоны и файлы старше": "Телефони та файли старші за",
   "дней будут удалены сейчас и дальше автоматически. Продолжить?": "днів буде видалено зараз і далі автоматично. Продовжити?",
+  "За какое время": "За який час", "За всё время": "За весь час", "За 7 дней": "За 7 днів", "За 30 дней": "За 30 днів",
+  "Какие телефоны показать": "Які телефони показати", "Все телефоны": "Усі телефони", "Активированы": "Активовані",
+  "Без активации": "Без активації", "С любой ошибкой": "З будь-якою помилкою", "С заметкой": "З нотаткою", "Показано": "Показано",
   "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
@@ -917,7 +946,7 @@ function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" 
 const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",
   "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult",
   "status", "connText", "ver", "aboutVer", "netCount", "histCount", "device", "language", "region",
-  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage"]);
+  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage", "histShown"]);
 const _i18nText = new WeakMap(), _i18nAttr = new WeakMap();
 function _skip(el) { for (let n = el; n; n = n.parentElement) if (n.id && I18N_SKIP.has(n.id)) return true; return false; }
 function translateStatic() {
@@ -1405,11 +1434,45 @@ $("filesClear").onclick = async () => {
   openRow = null;
   loadHistory();
 };
+// Filters. Dates are compared as text: history times are "YYYY-MM-DD HH:MM:SS" in local time.
+function histSince(days) {
+  const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - days);
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} 00:00:00`;
+}
+function histInPeriod(d, period) {
+  if (period === "all") return true;
+  const since = histSince({ today: 0, week: 6, month: 29 }[period] ?? 0);
+  return (d.last_seen || "") >= since;
+}
+function histMatches(d, result) {
+  const ev = d.events || [];
+  const did = (action, res) => ev.some(e => e.action === action && e.result === res);
+  switch (result) {
+    case "activated": return did("Активация", "ok");
+    case "notactivated": return !did("Активация", "ok");
+    case "issues": return did("Диагностика", "error") || did("Локатор и MDM", "error");  // as in the counter
+    case "errors": return ev.some(e => e.result === "error");
+    case "note": return !!d.note;
+    default: return true;
+  }
+}
+$("histPeriod").onchange = $("histResult").onchange = () => { openRow = null; renderHistory(); };
+document.querySelectorAll(".stat[data-filter]").forEach(b => b.onclick = () => {
+  const [period, result] = b.dataset.filter.split("|");
+  const same = $("histPeriod").value === period && $("histResult").value === result;
+  $("histPeriod").value = same ? "all" : period; $("histResult").value = same ? "all" : result;
+  openRow = null; renderHistory();
+});
 const HIST_LIMIT = 300;  // rows drawn at once; the rest is reached through the search
 function renderHistory() {
   const q = $("histSearch").value.trim().toLowerCase();
-  const list = hist.devices.filter(d => !q || [d.serial, d.id, d.imei, d.imei2, d.model, d.model_name && T(d.model_name), d.name, d.note]
-    .some(v => v && v.toLowerCase().includes(q)));
+  const period = $("histPeriod").value, result = $("histResult").value;
+  const list = hist.devices.filter(d => (!q || [d.serial, d.id, d.imei, d.imei2, d.model, d.model_name && T(d.model_name), d.name, d.note]
+    .some(v => v && v.toLowerCase().includes(q))) && histInPeriod(d, period) && histMatches(d, result));
+  const filtered = q || period !== "all" || result !== "all";
+  $("histShown").textContent = filtered ? `${T("Показано")}: ${list.length} ${T("из")} ${hist.devices.length}` : "";
+  document.querySelectorAll(".stat[data-filter]").forEach(b => b.classList.toggle("on", b.dataset.filter === `${period}|${result}` && (period !== "all" || result !== "all")));
   const more = list.length > HIST_LIMIT;
   $("histEmpty").style.display = list.length && !more ? "none" : "";
   $("histEmpty").textContent = more ? `${T("Показаны последние")} ${HIST_LIMIT} ${T("из")} ${list.length}. ${T("Остальные можно найти через поиск.")}`
