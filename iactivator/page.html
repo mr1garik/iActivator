@@ -120,6 +120,15 @@
   .lbl-lines { display:grid; grid-template-columns:repeat(2, minmax(150px, 1fr)); gap:4px 16px; font-size:13px; }
   .lbl-lines label { display:flex; gap:6px; align-items:center; }
   .lbl-preview { display:flex; flex-direction:column; gap:4px; }
+  .lbl-edit-preview { display:flex; justify-content:center; padding:10px; background:var(--field); border-radius:10px; margin-bottom:12px; }
+  .lbl-edit-preview svg { display:block; width:340px; max-width:100%; height:auto; stroke:none; fill:#000; background:#fff;
+                          border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,.18); }
+  .lbl-edit-lines { display:flex; flex-direction:column; gap:6px; }
+  .lbl-edit-lines .ln { display:flex; gap:6px; align-items:center; }
+  .lbl-edit-lines input[type=text] { flex:1; }
+  .lbl-edit-lines .b { font-weight:700; min-width:34px; padding:0 8px; }
+  .lbl-edit-lines .b.on { background:var(--brand); color:var(--on-accent, #fff); }
+  .lbl-edit-lines .x { min-width:34px; padding:0 8px; }
   #lblPreview svg { display:block; width:320px; height:auto; stroke:none; fill:#000; background:#fff; border-radius:6px;
                     box-shadow:0 1px 4px rgba(0,0,0,.18); }
   .hist-filters select { max-width:200px; }
@@ -565,6 +574,23 @@
 </div>
 </div>
 
+<div class="modal" id="lblDialog">
+  <div class="box" style="max-width:560px">
+    <h3>Наклейка</h3>
+    <p class="sub">Поправьте строки перед печатью. Изменения только для этой наклейки — шаблон в Настройках не меняется.</p>
+    <div class="lbl-edit-preview" id="lblEditPreview"></div>
+    <div id="lblEditLines" class="lbl-edit-lines"></div>
+    <div class="row" style="gap:8px;margin-top:6px">
+      <button id="lblEditAdd">+ Строка</button>
+      <button id="lblEditReset">Как в шаблоне</button>
+    </div>
+    <div class="foot">
+      <button id="lblEditCancel">Отмена</button>
+      <button class="primary" id="lblEditPrint"><svg><use href="#i-file"/></svg>Сделать PDF</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="preview">
   <div class="box">
     <h3>Проверьте перед запуском</h3>
@@ -674,6 +700,8 @@ const T_EN = {
   "Нижняя строка": "Bottom line", "Например: название магазина и телефон": "E.g. shop name and phone number",
   "Предпросмотр": "Preview", "Предпросмотр наклейки": "Sticker preview",
   "Последний телефон из истории или пример. Так наклейка выйдет на печать.": "The latest phone from the history, or a sample. This is how the sticker prints.",
+  "Поправьте строки перед печатью. Изменения только для этой наклейки — шаблон в Настройках не меняется.": "Adjust the lines before printing. The changes are for this sticker only — the template in Settings stays as it is.",
+  "+ Строка": "+ Line", "Как в шаблоне": "As in the template", "Сделать PDF": "Make PDF", "Жирный": "Bold", "Убрать строку": "Remove line",
   "Сохранить TXT": "Save TXT", "Заметка": "Note",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
@@ -883,6 +911,8 @@ const T_UK = {
   "Нижняя строка": "Нижній рядок", "Например: название магазина и телефон": "Наприклад: назва магазину та телефон",
   "Предпросмотр": "Попередній перегляд", "Предпросмотр наклейки": "Попередній перегляд наліпки",
   "Последний телефон из истории или пример. Так наклейка выйдет на печать.": "Останній телефон з історії або приклад. Так наліпка вийде на друк.",
+  "Поправьте строки перед печатью. Изменения только для этой наклейки — шаблон в Настройках не меняется.": "Виправте рядки перед друком. Зміни лише для цієї наліпки — шаблон у Налаштуваннях не змінюється.",
+  "+ Строка": "+ Рядок", "Как в шаблоне": "Як у шаблоні", "Сделать PDF": "Зробити PDF", "Жирный": "Жирний", "Убрать строку": "Прибрати рядок",
   "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
@@ -1021,7 +1051,7 @@ function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" 
 const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",
   "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult",
   "status", "connText", "ver", "aboutVer", "netCount", "histCount", "device", "language", "region",
-  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage", "histShown"]);
+  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage", "histShown", "lblPreview", "lblEditPreview", "lblEditLines"]);
 const _i18nText = new WeakMap(), _i18nAttr = new WeakMap();
 function _skip(el) { for (let n = el; n; n = n.parentElement) if (n.id && I18N_SKIP.has(n.id)) return true; return false; }
 function translateStatic() {
@@ -1547,11 +1577,8 @@ document.querySelectorAll(".stat[data-filter]").forEach(b => b.onclick = () => {
   openRow = null; renderHistory();
 });
 let shownKeys = [];
-// The sticker drawn from the same layout the PDF uses (sizes in mm), with the saved settings.
-async function refreshLabelPreview() {
-  let p;
-  try { p = await api("/api/labels/preview"); } catch { return; }
-  if (!p || p.error || !p.qr) { $("lblPreview").textContent = p && p.error || ""; return; }
+// A sticker drawn from the same layout the PDF uses (sizes in mm).
+function labelSvg(p) {
   const q = p.qr, n = q.matrix.length, cell = q.side / n;
   let rects = "";
   q.matrix.forEach((row, r) => {
@@ -1565,9 +1592,65 @@ async function refreshLabelPreview() {
   const pt = 0.3528;  // mm per point
   const text = p.lines.map(l => `<text x="${l.x}" y="${(l.y + l.h / 2).toFixed(3)}" font-size="${(l.size * pt).toFixed(3)}"
     font-weight="${l.bold ? 700 : 400}" dominant-baseline="central">${esc(l.text)}</text>`).join("");
-  $("lblPreview").innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${p.w} ${p.h}"
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${p.w} ${p.h}"
     font-family="Arial, 'DejaVu Sans', 'Segoe UI', sans-serif" fill="#000">${rects}${text}</svg>`;
 }
+// Settings: the sticker with the saved template.
+async function refreshLabelPreview() {
+  let p;
+  try { p = await api("/api/labels/preview"); } catch { return; }
+  $("lblPreview").innerHTML = p && p.qr ? labelSvg(p) : esc(p && p.error || "");
+}
+
+// History: edit one sticker before printing.
+let lblEdit = null;  // { id, lines: [{text, bold}] }
+async function openLabelEditor(id) {
+  const res = await api("/api/labels/edit", { id });
+  if (res.error) return alert(res.error);
+  lblEdit = { id, lines: res.lines };
+  renderLabelEditor();
+  $("lblDialog").classList.add("on");
+}
+function renderLabelEditor() {
+  $("lblEditLines").innerHTML = lblEdit.lines.map((l, i) => `<div class="ln">
+      <button class="b${l.bold ? " on" : ""}" data-bold="${i}" title="${T("Жирный")}">B</button>
+      <input type="text" maxlength="80" data-line-text="${i}" value="${esc(l.text || "")}">
+      <button class="x" data-del-line="${i}" title="${T("Убрать строку")}">✕</button></div>`).join("");
+  $("lblEditAdd").disabled = lblEdit.lines.length >= 12;
+  updateLabelEditPreview();
+}
+let lblEditTimer;
+function updateLabelEditPreview() {
+  clearTimeout(lblEditTimer);
+  lblEditTimer = setTimeout(async () => {
+    const p = await api("/api/labels/preview", { id: lblEdit.id, lines: lblEdit.lines });
+    $("lblEditPreview").innerHTML = p && p.qr ? labelSvg(p) : esc(p && p.error || "");
+  }, 250);
+}
+$("lblEditLines").addEventListener("input", e => {
+  const i = e.target.dataset.lineText;
+  if (i !== undefined) { lblEdit.lines[i].text = e.target.value; updateLabelEditPreview(); }
+});
+$("lblEditLines").addEventListener("click", e => {
+  const b = e.target.closest("[data-bold]"), x = e.target.closest("[data-del-line]");
+  if (b) { const l = lblEdit.lines[b.dataset.bold]; l.bold = !l.bold; renderLabelEditor(); }
+  if (x) { lblEdit.lines.splice(Number(x.dataset.delLine), 1); renderLabelEditor(); }
+});
+$("lblEditAdd").onclick = () => {
+  lblEdit.lines.push({ text: "", bold: false }); renderLabelEditor();
+  const inputs = document.querySelectorAll("[data-line-text]"); inputs[inputs.length - 1].focus();
+};
+$("lblEditReset").onclick = () => openLabelEditor(lblEdit.id);
+$("lblEditCancel").onclick = () => { $("lblDialog").classList.remove("on"); lblEdit = null; };
+$("lblEditPrint").onclick = async () => {
+  const btn = $("lblEditPrint"); btn.disabled = true;
+  try {
+    const res = await api("/api/labels", { ids: [lblEdit.id], lines: lblEdit.lines });
+    if (res.error) return alert(res.error);
+    $("lblDialog").classList.remove("on"); lblEdit = null;
+    loadFilesUsage(); if (openRow) renderHistory();
+  } finally { btn.disabled = false; }
+};
 $("lblAll").onclick = async () => {
   if (!shownKeys.length) return alert(T("Ничего не найдено"));
   if (shownKeys.length > 50 && !confirm(`${T("Сделать наклейки для")} ${shownKeys.length} ${T("телефонов?")}`)) return;
@@ -1641,11 +1724,7 @@ async function makeReport() {
 document.querySelectorAll(".report-btn").forEach(b => b.onclick = makeReport);
 $("histBody").onclick = async e => {
   const lbl = e.target.closest("[data-label]");
-  if (lbl) {
-    const res = await api("/api/labels", { ids: [lbl.dataset.label] });
-    if (res.error) alert(res.error);
-    return loadFilesUsage();
-  }
+  if (lbl) return openLabelEditor(lbl.dataset.label);
   const txt = e.target.closest("[data-txt]");
   if (txt) {
     const res = await api("/api/history/txt", { serial: txt.dataset.txt });

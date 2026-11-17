@@ -111,6 +111,23 @@ def lines_for(d: dict, opts) -> list[tuple[str, bool]]:
     return out or [(d.get("serial") or "iPhone", False)]
 
 
+CUSTOM_MAX_LINES, CUSTOM_MAX_CHARS = 12, 80
+
+
+def custom_lines(raw) -> list[tuple[str, bool]] | None:
+    """Lines the user edited for one sticker before printing: [{"text", "bold"}, …].
+    Empty lines are dropped; None when nothing usable is left (then the template is used)."""
+    if not isinstance(raw, list):
+        return None
+    out = []
+    for item in raw[:CUSTOM_MAX_LINES]:
+        if isinstance(item, dict):
+            text = _clean(item.get("text"), CUSTOM_MAX_CHARS)
+            if text:
+                out.append((text, bool(item.get("bold"))))
+    return out or None
+
+
 def qr_text(d: dict, mode: str) -> str:
     """serial: just the serial number (a scanner finds the phone by it); text: the facts
     in plain text that any phone camera shows."""
@@ -210,7 +227,7 @@ def _arrange(pdf: FPDF, d: dict, opts: dict, x0: float, y0: float, w: float, h: 
     qr = {"x": x0 + pad, "y": y0 + (h - side) / 2, "side": side, "data": qr_text(d, opts["qr"])}
     tx = x0 + pad + side + 1.6
     tw = x0 + w - pad - tx
-    size, lines = _layout(pdf, lines_for(d, opts), tw, h - 2 * pad)
+    size, lines = _layout(pdf, opts.get("custom") or lines_for(d, opts), tw, h - 2 * pad)
     # Whatever still does not fit at the smallest size is left out (the QR code has it).
     lines = lines[:max(1, int((h - 2 * pad) / (size * LINE)))]
     y = y0 + max(pad, (h - len(lines) * size * LINE) / 2)
@@ -278,14 +295,14 @@ SAMPLE = {"id": "sample", "serial": "F2LXK0ABCD12", "model_name": "iPhone 15 Pro
           "note": "A-12", "events": [{"action": "Диагностика", "result": "ok"}]}
 
 
-def preview(opts: dict, device: dict | None = None) -> dict:
+def preview(opts: dict, device: dict | None = None, example_note: bool = True) -> dict:
     """One sticker laid out for the preview in Settings (the latest phone from the history,
     or a sample one): its size, the QR code's squares and each text line, in mm, so the
     window can draw it. Nothing is saved."""
     d = dict(device or SAMPLE)
     if not d.get("last_seen"):
         d["last_seen"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if opts.get("note") and not d.get("note"):
+    if example_note and opts.get("note") and not d.get("note"):  # in Settings: show what the field looks like
         d["note"] = "A-12"
     size = opts.get("size") if opts.get("size") in SIZES else DEFAULTS["size"]
     w, h = SIZES[size]  # for the A4 sheet: one of its stickers

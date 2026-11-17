@@ -515,6 +515,8 @@ class Handler(BaseHTTPRequestHandler):
             from . import labels
             opts = labels.options(settings.load()["ui"])
             ids = [str(i) for i in (d.get("ids") or [])][:2000]
+            if len(ids) == 1 and labels.custom_lines(d.get("lines")):
+                opts["custom"] = labels.custom_lines(d.get("lines"))  # edited before printing
             try:
                 path = labels.make(ids, opts)
             except Exception as e:
@@ -526,6 +528,23 @@ class Handler(BaseHTTPRequestHandler):
                 history.add_event(ids[0], "Наклейка", "info", path.name)
             STATE.log(t("🏷 Наклейки сохранены: {n} · {name}", n=len(ids), name=path.name))
             return self._send(200, {"ok": True, "path": str(path)})
+        if self.path in ("/api/labels/edit", "/api/labels/preview"):
+            # The sticker dialog: /edit gives the template's lines for one phone (to edit),
+            # /preview lays out the sticker with the edited lines. Nothing is saved.
+            from . import labels
+            opts = labels.options(settings.load()["ui"])
+            device = history.export().get(str(d.get("id") or ""))
+            if device is None:
+                return self._send(200, {"error": t("Этого устройства нет в истории.")})
+            if self.path == "/api/labels/edit":
+                return self._send(200, {"lines": [{"text": x, "bold": b} for x, b in labels.lines_for(device, opts)]})
+            custom = labels.custom_lines(d.get("lines"))
+            try:
+                return self._send(200, labels.preview({**opts, "custom": custom} if custom else opts, device,
+                                                      example_note=False))
+            except Exception as e:
+                applog.exception(e)
+                return self._send(200, {"error": t("Не удалось сделать наклейку: {e}", e=core.short_error(e))})
         if self.path == "/api/history/note":
             if not history.set_note(d.get("serial", ""), str(d.get("note") or "")):
                 return self._send(200, {"error": t("Этого устройства нет в истории.")})

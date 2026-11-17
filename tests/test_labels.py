@@ -99,6 +99,27 @@ class Labels(unittest.TestCase):
         self.assertTrue(all(ln["y"] + ln["h"] <= p["h"] + 0.01 for ln in p["lines"]))
         self.assertFalse((self.dir / "Наклейки").exists())  # nothing saved
 
+    def test_edited_lines_are_checked(self):
+        c = self.labels.custom_lines([{"text": "  Склад:\n B-7 ", "bold": 1}, {"text": ""}, "junk",
+                                      {"text": "x" * 200}] + [{"text": "a"}] * 20)
+        self.assertEqual(c[0], ("Склад: B-7", True))
+        self.assertEqual(len(c[1][0]), self.labels.CUSTOM_MAX_CHARS)
+        self.assertEqual(len(c), self.labels.CUSTOM_MAX_LINES - 2)  # 12 read, 2 unusable dropped
+        self.assertIsNone(self.labels.custom_lines([{"text": "  "}]))
+        self.assertIsNone(self.labels.custom_lines("text"))
+
+    def test_edited_lines_replace_the_template_for_that_sticker(self):
+        opts = self.labels.options({"labels": {"size": "58x40"}})
+        p = self.labels.preview({**opts, "custom": [("Только это", True)]}, dict(PHONE), example_note=False)
+        self.assertEqual([ln["text"] for ln in p["lines"]], ["Только это"])
+        path = self.labels.build([PHONE], {**opts, "custom": [("Склад: B-7", True)]})
+        self.assertTrue(path.exists())
+
+    def test_phone_without_note_gets_no_example_note_in_the_editor(self):
+        opts = self.labels.options({"labels": {"note": True, "field": "Склад"}})
+        p = self.labels.preview(opts, dict(PHONE, note=""), example_note=False)
+        self.assertFalse(any("A-12" in ln["text"] for ln in p["lines"]))
+
     def test_never_checked_phone_has_no_verdict(self):
         self.assertEqual(self.labels.verdict(dict(PHONE, events=[])), "")
 
