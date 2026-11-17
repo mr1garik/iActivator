@@ -136,6 +136,9 @@ def save_ui(values: dict) -> None:
             data["ui"]["notify"] = values["notify"]
         if values.get("cleanup_days") in CLEANUP_DAYS:
             data["ui"]["cleanup_days"] = values["cleanup_days"]
+        if isinstance(values.get("labels"), dict):
+            from .labels import options  # checks every value; unknown ones are dropped
+            data["ui"]["labels"] = options({"labels": {**data["ui"].get("labels", {}), **values["labels"]}})
         _save(data)
 
 

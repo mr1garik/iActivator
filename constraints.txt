@@ -37,6 +37,7 @@ executing==2.3.0
 fastapi==0.162.2
 fonttools==4.68.0
 fpdf2==2.9.0
+segno==1.6.6
 h11==0.16.0
 hyperframe==6.1.0
 idna==3.20

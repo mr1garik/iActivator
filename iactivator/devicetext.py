@@ -112,7 +112,8 @@ def _windows() -> bool:
 
 def _folders() -> list[Path]:
     # The PDF reports folder (report.reports_dir), named here so this module does not load the PDF library.
-    return [texts_dir(create=False), app_data_dir() / "Отчёты"]
+    # The same for the stickers folder (labels.FOLDER).
+    return [texts_dir(create=False), app_data_dir() / "Отчёты", app_data_dir() / "Наклейки"]
 
 
 def usage() -> dict:

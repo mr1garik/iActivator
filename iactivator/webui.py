@@ -499,6 +499,21 @@ class Handler(BaseHTTPRequestHandler):
             applog.add(t("История очищена: устройств {d}, файлов {n}, освобождено {size}",
                          d=r["devices"], n=r["removed"], size=_size(r["bytes"])))
             return self._send(200, {**r, "size": _size(r["bytes"])})
+        if self.path == "/api/labels":
+            from . import labels
+            opts = labels.options(settings.load()["ui"])
+            ids = [str(i) for i in (d.get("ids") or [])][:2000]
+            try:
+                path = labels.make(ids, opts)
+            except Exception as e:
+                applog.exception(e)
+                return self._send(200, {"error": t("Не удалось сделать наклейку: {e}", e=core.short_error(e))})
+            if path is None:
+                return self._send(200, {"error": t("Этого устройства нет в истории.")})
+            if len(ids) == 1:
+                history.add_event(ids[0], "Наклейка", "info", path.name)
+            STATE.log(t("🏷 Наклейки сохранены: {n} · {name}", n=len(ids), name=path.name))
+            return self._send(200, {"ok": True, "path": str(path)})
         if self.path == "/api/history/note":
             if not history.set_note(d.get("serial", ""), str(d.get("note") or "")):
                 return self._send(200, {"error": t("Этого устройства нет в истории.")})

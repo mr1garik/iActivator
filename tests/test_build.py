@@ -21,7 +21,7 @@ import json, os, sys, tempfile
 os.environ.setdefault("HOME", tempfile.mkdtemp())
 os.environ.setdefault("APPDATA", os.environ["HOME"])
 sys.path.insert(0, sys.argv[1])
-from iactivator import webui, core, update, report, driver, history, settings, applog
+from iactivator import webui, core, update, report, driver, history, settings, applog, labels, notify, devicetext
 import pymobiledevice3.services.crash_reports
 print(json.dumps(sorted({m.split(".")[0] for m in sys.modules})))
 """
@@ -62,7 +62,7 @@ class Options(unittest.TestCase):
     def test_needed_packages_are_never_excluded(self):
         needed = {"pymobiledevice3", "cryptography", "requests", "keyring", "fpdf", "fontTools", "certifi",
                   "webview", "pystray", "PIL", "win32security", "clr_loader", "pythonnet", "typer", "rich",
-                  "questionary", "prompt_toolkit", "pygments", "click", "pycrashreport"}
+                  "questionary", "prompt_toolkit", "pygments", "click", "pycrashreport", "segno"}
         self.assertEqual(sorted(needed & set(build.EXCLUDES)), [])
 
 

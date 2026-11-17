@@ -6,6 +6,7 @@ pywebview==6.2.1
 keyring==25.7.0
 pyinstaller==6.22.3
 fpdf2==2.9.0
+segno==1.6.6
 certifi==2026.10.23
 pystray==0.19.5; sys_platform == "win32"
 Pillow==13.0.0; sys_platform == "win32"

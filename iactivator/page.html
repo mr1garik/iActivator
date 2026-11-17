@@ -377,6 +377,7 @@
       </div>
       <div class="row files-row">
         <button id="txtAll" title="По отдельному TXT-файлу на каждый телефон: данные, детали и все события"><svg><use href="#i-file"/></svg>Все в TXT</button>
+        <button id="lblAll" style="display:none" title="Один PDF с наклейками для телефонов, которые сейчас показаны (с учётом поиска и фильтров)"><svg><use href="#i-file"/></svg>Наклейки</button>
         <span id="filesUsage" class="empty"></span>
         <button id="filesClear" class="ghost-danger" title="Удалить историю устройств, TXT-файлы и PDF-отчёты">Очистить всё</button>
       </div>
@@ -437,6 +438,27 @@
         </select></div>
       <p class="hint">Удаляются телефоны, которые давно не подключались, и старые TXT-файлы и PDF-отчёты.
         Проверка — при запуске программы и каждые 6 часов.</p>
+    </div>
+    <div class="card">
+      <h2>Наклейки с QR-кодом</h2>
+      <label class="sw"><input type="checkbox" id="lblOn"><span class="t">Показывать кнопку «Наклейка» в истории
+        <small>PDF точно под размер этикетки — печатается на любом принтере</small></span></label>
+      <div id="lblOpts">
+        <div class="row"><span class="lbl">Размер</span>
+          <select id="lblSize" style="max-width:320px">
+            <option value="40x30">40 × 30 мм</option>
+            <option value="50x30">50 × 30 мм</option>
+            <option value="58x40">58 × 40 мм</option>
+            <option value="62x29">62 × 29 мм</option>
+            <option value="a4">Лист A4 — 24 наклейки 70 × 37 мм</option>
+          </select></div>
+        <div class="row"><span class="lbl">QR-код</span>
+          <select id="lblQr" style="max-width:440px">
+            <option value="text">Данные телефона текстом — читает любая камера</option>
+            <option value="serial">Только серийный номер — для поиска сканером</option>
+          </select></div>
+        <label class="sw"><input type="checkbox" id="lblNote"><span class="t">Добавлять заметку (например, цену)</span></label>
+      </div>
     </div>
     <div class="card" id="startupCard" style="display:none">
       <h2>Запуск</h2>
@@ -546,6 +568,7 @@ let logNext = 0, regions = [], networks = [], known = new Set(), wasBusy = false
 // Strings the server sends (step names, check names, journal text, device labels) are also
 // looked up here, so the backend keeps emitting Russian and the page translates for display.
 let LANG = "ru";
+let LABELS = { enabled: false };  // sticker settings, filled by loadSettings
 try {
   const sl = localStorage.getItem("lang");
   if (["ru", "en", "uk"].includes(sl)) LANG = sl;           // remembered choice
@@ -614,6 +637,14 @@ const T_EN = {
   "За какое время": "Time period", "За всё время": "All time", "За 7 дней": "Last 7 days", "За 30 дней": "Last 30 days",
   "Какие телефоны показать": "Which phones to show", "Все телефоны": "All phones", "Активированы": "Activated",
   "Без активации": "Not activated", "С любой ошибкой": "With any error", "С заметкой": "With a note", "Показано": "Shown",
+  "Наклейки с QR-кодом": "Stickers with a QR code", "Показывать кнопку «Наклейка» в истории": "Show the “Sticker” button in History",
+  "PDF точно под размер этикетки — печатается на любом принтере": "A PDF of the exact label size — prints on any printer",
+  "Размер": "Size", "Лист A4 — 24 наклейки 70 × 37 мм": "A4 sheet — 24 stickers 70 × 37 mm", "QR-код": "QR code",
+  "Данные телефона текстом — читает любая камера": "Phone details as text — any camera reads it",
+  "Только серийный номер — для поиска сканером": "Serial number only — for finding with a scanner",
+  "Добавлять заметку (например, цену)": "Add the note (e.g. the price)", "Наклейка": "Sticker", "Наклейки": "Stickers",
+  "Один PDF с наклейками для телефонов, которые сейчас показаны (с учётом поиска и фильтров)": "One PDF with stickers for the phones shown now (search and filters apply)",
+  "Сделать наклейки для": "Make stickers for", "телефонов?": "phones?",
   "Сохранить TXT": "Save TXT", "Заметка": "Note",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
@@ -808,6 +839,14 @@ const T_UK = {
   "За какое время": "За який час", "За всё время": "За весь час", "За 7 дней": "За 7 днів", "За 30 дней": "За 30 днів",
   "Какие телефоны показать": "Які телефони показати", "Все телефоны": "Усі телефони", "Активированы": "Активовані",
   "Без активации": "Без активації", "С любой ошибкой": "З будь-якою помилкою", "С заметкой": "З нотаткою", "Показано": "Показано",
+  "Наклейки с QR-кодом": "Наліпки з QR-кодом", "Показывать кнопку «Наклейка» в истории": "Показувати кнопку «Наліпка» в історії",
+  "PDF точно под размер этикетки — печатается на любом принтере": "PDF точно під розмір етикетки — друкується на будь-якому принтері",
+  "Размер": "Розмір", "Лист A4 — 24 наклейки 70 × 37 мм": "Аркуш A4 — 24 наліпки 70 × 37 мм", "QR-код": "QR-код",
+  "Данные телефона текстом — читает любая камера": "Дані телефона текстом — читає будь-яка камера",
+  "Только серийный номер — для поиска сканером": "Лише серійний номер — для пошуку сканером",
+  "Добавлять заметку (например, цену)": "Додавати нотатку (наприклад, ціну)", "Наклейка": "Наліпка", "Наклейки": "Наліпки",
+  "Один PDF с наклейками для телефонов, которые сейчас показаны (с учётом поиска и фильтров)": "Один PDF з наліпками для телефонів, які зараз показано (з урахуванням пошуку та фільтрів)",
+  "Сделать наклейки для": "Зробити наліпки для", "телефонов?": "телефонів?",
   "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
@@ -1226,6 +1265,10 @@ async function loadSettings(applyLast) {
   const s = await api("/api/settings", {});
   applyTheme(s.ui.theme);
   $("notifyOn").checked = s.ui.notify !== false;
+  LABELS = Object.assign({ enabled: false, size: "40x30", qr: "text", note: false }, s.ui.labels || {});
+  $("lblOn").checked = LABELS.enabled; $("lblSize").value = LABELS.size; $("lblQr").value = LABELS.qr;
+  $("lblNote").checked = LABELS.note; $("lblOpts").style.display = LABELS.enabled ? "" : "none";
+  $("lblAll").style.display = LABELS.enabled ? "" : "none";
   $("cleanupDays").value = String(s.ui.cleanup_days || 0);
   if (["ru", "en", "uk"].includes(s.ui.lang)) { LANG = s.ui.lang; try { localStorage.setItem("lang", LANG); } catch {} }
   networks = s.networks;
@@ -1416,7 +1459,7 @@ async function loadHistory() {
 async function loadFilesUsage() {
   try {
     const u = await api("/api/files/usage");
-    $("filesUsage").textContent = u.files ? `${T("Файлов TXT и PDF")}: ${u.files} · ${u.size}` : T("Файлов TXT и PDF нет");
+    $("filesUsage").textContent = u.files ? `${T("Файлов TXT и PDF")}: ${u.files} · ${u.size}` : T("Файлов TXT и PDF нет");  // PDF: reports and stickers
     $("filesClear").disabled = !u.files && !u.devices;
   } catch {}
 }
@@ -1464,12 +1507,21 @@ document.querySelectorAll(".stat[data-filter]").forEach(b => b.onclick = () => {
   $("histPeriod").value = same ? "all" : period; $("histResult").value = same ? "all" : result;
   openRow = null; renderHistory();
 });
+let shownKeys = [];
+$("lblAll").onclick = async () => {
+  if (!shownKeys.length) return alert(T("Ничего не найдено"));
+  if (shownKeys.length > 50 && !confirm(`${T("Сделать наклейки для")} ${shownKeys.length} ${T("телефонов?")}`)) return;
+  const res = await api("/api/labels", { ids: shownKeys });
+  if (res.error) alert(res.error);
+  loadFilesUsage();
+};
 const HIST_LIMIT = 300;  // rows drawn at once; the rest is reached through the search
 function renderHistory() {
   const q = $("histSearch").value.trim().toLowerCase();
   const period = $("histPeriod").value, result = $("histResult").value;
   const list = hist.devices.filter(d => (!q || [d.serial, d.id, d.imei, d.imei2, d.model, d.model_name && T(d.model_name), d.name, d.note]
     .some(v => v && v.toLowerCase().includes(q))) && histInPeriod(d, period) && histMatches(d, result));
+  shownKeys = list.map(d => d.id || d.serial);
   const filtered = q || period !== "all" || result !== "all";
   $("histShown").textContent = filtered ? `${T("Показано")}: ${list.length} ${T("из")} ${hist.devices.length}` : "";
   document.querySelectorAll(".stat[data-filter]").forEach(b => b.classList.toggle("on", b.dataset.filter === `${period}|${result}` && (period !== "all" || result !== "all")));
@@ -1491,7 +1543,7 @@ function renderHistory() {
       <label class="note-edit"><span>${T("Заметка")}</span><textarea data-note="${esc(key)}" maxlength="1000" rows="2"
         placeholder="${T("Цена, клиент, дефекты… Видно в TXT, PDF и поиске")}">${esc(d.note || "")}</textarea><small class="empty" data-note-state></small></label>
       ${evs || `<span class="empty">${T("Событий нет")}</span>`}
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px"><button data-txt="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Сохранить TXT")}</button><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">${LABELS.enabled ? `<button data-label="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Наклейка")}</button>` : ""}<button data-txt="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Сохранить TXT")}</button><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
   }).join("");
 }
 $("histSearch").oninput = renderHistory;
@@ -1528,6 +1580,12 @@ async function makeReport() {
 }
 document.querySelectorAll(".report-btn").forEach(b => b.onclick = makeReport);
 $("histBody").onclick = async e => {
+  const lbl = e.target.closest("[data-label]");
+  if (lbl) {
+    const res = await api("/api/labels", { ids: [lbl.dataset.label] });
+    if (res.error) alert(res.error);
+    return loadFilesUsage();
+  }
   const txt = e.target.closest("[data-txt]");
   if (txt) {
     const res = await api("/api/history/txt", { serial: txt.dataset.txt });
@@ -1646,6 +1704,14 @@ async function init() {
   await loadSettings(true);
   updateWifiHint();
   $("uiLang").value = LANG;
+  const saveLabels = async () => {
+    LABELS = { enabled: $("lblOn").checked, size: $("lblSize").value, qr: $("lblQr").value, note: $("lblNote").checked };
+    $("lblOpts").style.display = LABELS.enabled ? "" : "none";
+    $("lblAll").style.display = LABELS.enabled ? "" : "none";
+    await api("/api/settings/ui", { labels: LABELS });
+    if (hist) renderHistory();
+  };
+  ["lblOn", "lblSize", "lblQr", "lblNote"].forEach(id => $(id).onchange = saveLabels);
   $("notifyOn").onchange = () => api("/api/settings/ui", { notify: $("notifyOn").checked });
   $("cleanupDays").onchange = async () => {
     const days = Number($("cleanupDays").value);
