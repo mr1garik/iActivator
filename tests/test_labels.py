@@ -55,8 +55,15 @@ class Labels(unittest.TestCase):
         i18n.set_lang("ru")
 
     def test_settings_keep_only_allowed_values(self):
-        o = self.labels.options({"labels": {"enabled": True, "size": "99x99", "qr": "serial", "note": "yes"}})
-        self.assertEqual(o, {"enabled": True, "size": "40x30", "qr": "serial", "note": False})
+        o = self.labels.options({"labels": {"enabled": True, "size": "99x99", "qr": "serial", "note": "yes",
+                                            "show": {"imei": False, "hack": True, "serial": "no"},
+                                            "field": "  Склад \n " + "x" * 50, "footer": 7}})
+        self.assertEqual({k: o[k] for k in ("enabled", "size", "qr", "note")},
+                         {"enabled": True, "size": "40x30", "qr": "serial", "note": False})
+        self.assertEqual(o["show"], {**self.labels.DEFAULT_LINES, "imei": False})
+        self.assertEqual(len(o["field"]), self.labels.FIELD_MAX)
+        self.assertTrue(o["field"].startswith("Склад x"))
+        self.assertEqual(o["footer"], "7")
         self.assertFalse(self.labels.options({})["enabled"])  # off until turned on in Settings
 
     def test_qr_content(self):
@@ -69,6 +76,28 @@ class Labels(unittest.TestCase):
     def test_note_only_when_asked(self):
         self.assertNotIn(("Цена 1200$", False), self.labels.lines_for(PHONE, False))
         self.assertIn(("Цена 1200$", False), self.labels.lines_for(PHONE, True))
+
+    def test_template_field_name_lines_and_footer(self):
+        opts = self.labels.options({"labels": {"note": True, "field": "Склад", "footer": "Магазин iFix",
+                                               "show": {"imei": False, "battery": False, "date": False}}})
+        rows = [t for t, _ in self.labels.lines_for(dict(PHONE, note="A-12"), opts)]
+        self.assertEqual(rows, ["iPhone 18 Pro · 512 ГБ", "S/N HFMHQCMXP9", "Годен с замечаниями",
+                                "Склад: A-12", "Магазин iFix"])
+
+    def test_nothing_chosen_still_prints_the_serial(self):
+        opts = self.labels.options({"labels": {"show": {k: False for k in self.labels.DEFAULT_LINES}}})
+        self.assertEqual(self.labels.lines_for(PHONE, opts), [("HFMHQCMXP9", False)])
+
+    def test_preview_is_one_sticker_laid_out_as_printed(self):
+        opts = self.labels.options({"labels": {"size": "a4", "note": True, "field": "Склад"}})
+        p = self.labels.preview(opts)
+        self.assertEqual((p["w"], p["h"]), self.labels.SIZES["a4"])  # one sticker, not the sheet
+        self.assertIn("Склад: A-12", [ln["text"] for ln in p["lines"]])
+        m = p["qr"]["matrix"]
+        self.assertEqual(len(m), len(m[0]))
+        self.assertTrue(all(ln["x"] + ln["w"] <= p["w"] for ln in p["lines"]))
+        self.assertTrue(all(ln["y"] + ln["h"] <= p["h"] + 0.01 for ln in p["lines"]))
+        self.assertFalse((self.dir / "Наклейки").exists())  # nothing saved
 
     def test_never_checked_phone_has_no_verdict(self):
         self.assertEqual(self.labels.verdict(dict(PHONE, events=[])), "")

@@ -117,6 +117,11 @@
   .stat:hover { border-color:var(--brand); }
   .stat.on { border-color:var(--brand); box-shadow:0 0 0 1px var(--brand) inset; }
   .hist-filters { margin-top:8px; align-items:center; }
+  .lbl-lines { display:grid; grid-template-columns:repeat(2, minmax(150px, 1fr)); gap:4px 16px; font-size:13px; }
+  .lbl-lines label { display:flex; gap:6px; align-items:center; }
+  .lbl-preview { display:flex; flex-direction:column; gap:4px; }
+  #lblPreview svg { display:block; width:320px; height:auto; stroke:none; fill:#000; background:#fff; border-radius:6px;
+                    box-shadow:0 1px 4px rgba(0,0,0,.18); }
   .hist-filters select { max-width:200px; }
   .hist-filters #histShown { font-size:12px; }
   .stat b { display:block; font-size:24px; font-weight:600; letter-spacing:-.02em; } .stat span { color:var(--muted); font-size:12px; }
@@ -457,7 +462,24 @@
             <option value="text">Данные телефона текстом — читает любая камера</option>
             <option value="serial">Только серийный номер — для поиска сканером</option>
           </select></div>
-        <label class="sw"><input type="checkbox" id="lblNote"><span class="t">Добавлять заметку (например, цену)</span></label>
+        <div class="row" style="align-items:flex-start"><span class="lbl">Что печатать</span>
+          <div class="lbl-lines">
+            <label><input type="checkbox" data-line="model"> Модель и память</label>
+            <label><input type="checkbox" data-line="serial"> Серийный номер</label>
+            <label><input type="checkbox" data-line="imei"> IMEI</label>
+            <label><input type="checkbox" data-line="battery"> Батарея и iOS</label>
+            <label><input type="checkbox" data-line="verdict"> Итог проверки</label>
+            <label><input type="checkbox" data-line="date"> Дата</label>
+            <label><input type="checkbox" id="lblNote"> Заметка</label>
+          </div></div>
+        <div class="row"><span class="lbl">Название поля</span>
+          <input type="text" id="lblField" maxlength="20" style="max-width:320px" placeholder="Например: Склад, Ячейка, Партия"></div>
+        <p class="hint" style="margin-top:-4px">Пишется перед заметкой: «Склад: A-12». В заметке телефона достаточно написать «A-12».</p>
+        <div class="row"><span class="lbl">Нижняя строка</span>
+          <input type="text" id="lblFooter" maxlength="40" style="max-width:320px" placeholder="Например: название магазина и телефон"></div>
+        <div class="row" style="align-items:flex-start"><span class="lbl">Предпросмотр</span>
+          <div class="lbl-preview"><div id="lblPreview" title="Предпросмотр наклейки"></div>
+            <small class="empty">Последний телефон из истории или пример. Так наклейка выйдет на печать.</small></div></div>
       </div>
     </div>
     <div class="card" id="startupCard" style="display:none">
@@ -645,6 +667,13 @@ const T_EN = {
   "Добавлять заметку (например, цену)": "Add the note (e.g. the price)", "Наклейка": "Sticker", "Наклейки": "Stickers",
   "Один PDF с наклейками для телефонов, которые сейчас показаны (с учётом поиска и фильтров)": "One PDF with stickers for the phones shown now (search and filters apply)",
   "Сделать наклейки для": "Make stickers for", "телефонов?": "phones?",
+  "Что печатать": "What to print", "Модель и память": "Model and storage", "Серийный номер": "Serial number",
+  "Батарея и iOS": "Battery and iOS", "Итог проверки": "Check result", "Дата": "Date",
+  "Название поля": "Field name", "Например: Склад, Ячейка, Партия": "E.g. Warehouse, Shelf, Batch",
+  "Пишется перед заметкой: «Склад: A-12». В заметке телефона достаточно написать «A-12».": "Printed before the note: “Warehouse: A-12”. In the phone's note just write “A-12”.",
+  "Нижняя строка": "Bottom line", "Например: название магазина и телефон": "E.g. shop name and phone number",
+  "Предпросмотр": "Preview", "Предпросмотр наклейки": "Sticker preview",
+  "Последний телефон из истории или пример. Так наклейка выйдет на печать.": "The latest phone from the history, or a sample. This is how the sticker prints.",
   "Сохранить TXT": "Save TXT", "Заметка": "Note",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
@@ -847,6 +876,13 @@ const T_UK = {
   "Добавлять заметку (например, цену)": "Додавати нотатку (наприклад, ціну)", "Наклейка": "Наліпка", "Наклейки": "Наліпки",
   "Один PDF с наклейками для телефонов, которые сейчас показаны (с учётом поиска и фильтров)": "Один PDF з наліпками для телефонів, які зараз показано (з урахуванням пошуку та фільтрів)",
   "Сделать наклейки для": "Зробити наліпки для", "телефонов?": "телефонів?",
+  "Что печатать": "Що друкувати", "Модель и память": "Модель і пам'ять", "Серийный номер": "Серійний номер",
+  "Батарея и iOS": "Батарея та iOS", "Итог проверки": "Підсумок перевірки", "Дата": "Дата",
+  "Название поля": "Назва поля", "Например: Склад, Ячейка, Партия": "Наприклад: Склад, Комірка, Партія",
+  "Пишется перед заметкой: «Склад: A-12». В заметке телефона достаточно написать «A-12».": "Пишеться перед нотаткою: «Склад: A-12». У нотатці телефона достатньо написати «A-12».",
+  "Нижняя строка": "Нижній рядок", "Например: название магазина и телефон": "Наприклад: назва магазину та телефон",
+  "Предпросмотр": "Попередній перегляд", "Предпросмотр наклейки": "Попередній перегляд наліпки",
+  "Последний телефон из истории или пример. Так наклейка выйдет на печать.": "Останній телефон з історії або приклад. Так наліпка вийде на друк.",
   "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
@@ -1265,9 +1301,12 @@ async function loadSettings(applyLast) {
   const s = await api("/api/settings", {});
   applyTheme(s.ui.theme);
   $("notifyOn").checked = s.ui.notify !== false;
-  LABELS = Object.assign({ enabled: false, size: "40x30", qr: "text", note: false }, s.ui.labels || {});
+  LABELS = Object.assign({ enabled: false, size: "40x30", qr: "text", note: false, show: {}, field: "", footer: "" }, s.ui.labels || {});
   $("lblOn").checked = LABELS.enabled; $("lblSize").value = LABELS.size; $("lblQr").value = LABELS.qr;
   $("lblNote").checked = LABELS.note; $("lblOpts").style.display = LABELS.enabled ? "" : "none";
+  document.querySelectorAll("[data-line]").forEach(c => c.checked = LABELS.show[c.dataset.line] !== false);
+  $("lblField").value = LABELS.field || ""; $("lblFooter").value = LABELS.footer || "";
+  if (LABELS.enabled) refreshLabelPreview();
   $("lblAll").style.display = LABELS.enabled ? "" : "none";
   $("cleanupDays").value = String(s.ui.cleanup_days || 0);
   if (["ru", "en", "uk"].includes(s.ui.lang)) { LANG = s.ui.lang; try { localStorage.setItem("lang", LANG); } catch {} }
@@ -1508,6 +1547,27 @@ document.querySelectorAll(".stat[data-filter]").forEach(b => b.onclick = () => {
   openRow = null; renderHistory();
 });
 let shownKeys = [];
+// The sticker drawn from the same layout the PDF uses (sizes in mm), with the saved settings.
+async function refreshLabelPreview() {
+  let p;
+  try { p = await api("/api/labels/preview"); } catch { return; }
+  if (!p || p.error || !p.qr) { $("lblPreview").textContent = p && p.error || ""; return; }
+  const q = p.qr, n = q.matrix.length, cell = q.side / n;
+  let rects = "";
+  q.matrix.forEach((row, r) => {
+    for (let c = 0; c < n; c++) {
+      if (row[c] !== "1") continue;
+      let e = c; while (e < n && row[e] === "1") e++;
+      rects += `<rect x="${(q.x + c * cell).toFixed(3)}" y="${(q.y + r * cell).toFixed(3)}" width="${((e - c) * cell + 0.01).toFixed(3)}" height="${(cell + 0.01).toFixed(3)}"/>`;
+      c = e;
+    }
+  });
+  const pt = 0.3528;  // mm per point
+  const text = p.lines.map(l => `<text x="${l.x}" y="${(l.y + l.h / 2).toFixed(3)}" font-size="${(l.size * pt).toFixed(3)}"
+    font-weight="${l.bold ? 700 : 400}" dominant-baseline="central">${esc(l.text)}</text>`).join("");
+  $("lblPreview").innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${p.w} ${p.h}"
+    font-family="Arial, 'DejaVu Sans', 'Segoe UI', sans-serif" fill="#000">${rects}${text}</svg>`;
+}
 $("lblAll").onclick = async () => {
   if (!shownKeys.length) return alert(T("Ничего не найдено"));
   if (shownKeys.length > 50 && !confirm(`${T("Сделать наклейки для")} ${shownKeys.length} ${T("телефонов?")}`)) return;
@@ -1705,13 +1765,20 @@ async function init() {
   updateWifiHint();
   $("uiLang").value = LANG;
   const saveLabels = async () => {
-    LABELS = { enabled: $("lblOn").checked, size: $("lblSize").value, qr: $("lblQr").value, note: $("lblNote").checked };
+    const show = {};
+    document.querySelectorAll("[data-line]").forEach(c => show[c.dataset.line] = c.checked);
+    LABELS = { enabled: $("lblOn").checked, size: $("lblSize").value, qr: $("lblQr").value, note: $("lblNote").checked,
+               show, field: $("lblField").value.trim(), footer: $("lblFooter").value.trim() };
     $("lblOpts").style.display = LABELS.enabled ? "" : "none";
     $("lblAll").style.display = LABELS.enabled ? "" : "none";
     await api("/api/settings/ui", { labels: LABELS });
+    if (LABELS.enabled) refreshLabelPreview();
     if (hist) renderHistory();
   };
   ["lblOn", "lblSize", "lblQr", "lblNote"].forEach(id => $(id).onchange = saveLabels);
+  document.querySelectorAll("[data-line]").forEach(c => c.onchange = saveLabels);
+  let lblTimer;
+  ["lblField", "lblFooter"].forEach(id => $(id).oninput = () => { clearTimeout(lblTimer); lblTimer = setTimeout(saveLabels, 600); });
   $("notifyOn").onchange = () => api("/api/settings/ui", { notify: $("notifyOn").checked });
   $("cleanupDays").onchange = async () => {
     const days = Number($("cleanupDays").value);

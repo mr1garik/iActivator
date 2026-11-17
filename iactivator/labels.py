@@ -24,12 +24,21 @@ FOLDER = "Наклейки"
 SIZES = {"40x30": (40, 30), "50x30": (50, 30), "58x40": (58, 40), "62x29": (62, 29), "a4": (70, 37)}
 A4_GRID = (3, 8)
 QR_MODES = ("text", "serial")
-DEFAULTS = {"enabled": False, "size": "40x30", "qr": "text", "note": False}
+# Lines the user can turn on or off (the note is "note", kept from the first version).
+LINES = ("model", "serial", "imei", "battery", "verdict", "date", "note")
+DEFAULT_LINES = {"model": True, "serial": True, "imei": True, "battery": True, "verdict": True, "date": True}
+FIELD_MAX, FOOTER_MAX = 20, 40
+DEFAULTS = {"enabled": False, "size": "40x30", "qr": "text", "note": False,
+            "show": dict(DEFAULT_LINES), "field": "", "footer": ""}
+
+
+def _clean(text, limit: int) -> str:
+    return re.sub(r"\s+", " ", str(text or "")).strip()[:limit]
 
 
 def options(ui: dict) -> dict:
     """The sticker settings with defaults for anything missing or not allowed."""
-    o = dict(DEFAULTS)
+    o = {**DEFAULTS, "show": dict(DEFAULT_LINES)}
     saved = ui.get("labels") if isinstance(ui.get("labels"), dict) else {}
     if isinstance(saved.get("enabled"), bool):
         o["enabled"] = saved["enabled"]
@@ -39,6 +48,12 @@ def options(ui: dict) -> dict:
         o["qr"] = saved["qr"]
     if isinstance(saved.get("note"), bool):
         o["note"] = saved["note"]
+    if isinstance(saved.get("show"), dict):
+        for k, v in saved["show"].items():
+            if k in DEFAULT_LINES and isinstance(v, bool):
+                o["show"][k] = v
+    o["field"] = _clean(saved.get("field"), FIELD_MAX)
+    o["footer"] = _clean(saved.get("footer"), FOOTER_MAX)
     return o
 
 
@@ -61,28 +76,39 @@ def verdict(d: dict) -> str:
     return ""
 
 
-def lines_for(d: dict, with_note: bool) -> list[tuple[str, bool]]:
-    """What is printed next to the QR code: (text, bold)."""
-    model = t(d.get("model_name") or "") or d.get("model") or "iPhone"
-    out = [(model + (f" · {_capacity(d['capacity'])}" if d.get("capacity") else ""), True)]
-    if d.get("serial"):
+def lines_for(d: dict, opts) -> list[tuple[str, bool]]:
+    """What is printed next to the QR code: (text, bold), in the order and with the lines
+    chosen in Settings. opts may also be a bool (old call: only whether to add the note)."""
+    if isinstance(opts, bool):
+        opts = {**DEFAULTS, "note": opts}
+    show = {**DEFAULT_LINES, **(opts.get("show") or {})}
+    out = []
+    if show["model"]:
+        model = t(d.get("model_name") or "") or d.get("model") or "iPhone"
+        out.append((model + (f" · {_capacity(d['capacity'])}" if d.get("capacity") else ""), True))
+    if show["serial"] and d.get("serial"):
         out.append((f"S/N {d['serial']}", False))
-    if d.get("imei"):
+    if show["imei"] and d.get("imei"):
         out.append((f"IMEI {d['imei']}", False))
-    extra = []
-    if isinstance(d.get("battery"), (int, float)):
-        extra.append(f"{t('Батарея')} {min(int(d['battery']), 100)}%")
-    if d.get("ios"):
-        extra.append(f"iOS {d['ios']}")
-    if extra:
-        out.append((" · ".join(extra), False))
-    v = verdict(d)
-    date = (d.get("last_seen") or "")[:10]
+    if show["battery"]:
+        extra = []
+        if isinstance(d.get("battery"), (int, float)):
+            extra.append(f"{t('Батарея')} {min(int(d['battery']), 100)}%")
+        if d.get("ios"):
+            extra.append(f"iOS {d['ios']}")
+        if extra:
+            out.append((" · ".join(extra), False))
+    v = verdict(d) if show["verdict"] else ""
+    date = (d.get("last_seen") or "")[:10] if show["date"] else ""
     if v or date:
         out.append((" · ".join(x for x in (v, date) if x), bool(v)))
-    if with_note and d.get("note"):
-        out.append((d["note"].replace("\n", " "), False))
-    return out
+    if opts.get("note") and d.get("note"):
+        note = d["note"].replace("\n", " ")
+        field = opts.get("field")
+        out.append((f"{field}: {note}" if field else note, bool(field)))
+    if opts.get("footer"):
+        out.append((opts["footer"], False))
+    return out or [(d.get("serial") or "iPhone", False)]
 
 
 def qr_text(d: dict, mode: str) -> str:
@@ -105,7 +131,7 @@ def qr_text(d: dict, mode: str) -> str:
 
 class _Labels(FPDF):
     def __init__(self, size: str):
-        w, h = SIZES[size]
+        w, h = SIZES["a4"] if size == "a4one" else SIZES[size]
         super().__init__(unit="mm", format=(210, 297) if size == "a4" else (w, h))
         for regular, bold in FONTS:
             if Path(regular).exists() and Path(bold).exists():
@@ -176,22 +202,33 @@ def _layout(pdf: FPDF, rows: list[tuple[str, bool]], width: float, height: float
         size -= 0.25
 
 
-def _draw_label(pdf: FPDF, d: dict, opts: dict, x0: float, y0: float, w: float, h: float) -> None:
+def _arrange(pdf: FPDF, d: dict, opts: dict, x0: float, y0: float, w: float, h: float) -> dict:
+    """Where everything goes on one sticker (mm). Used for printing and for the preview,
+    so the preview shows exactly what prints."""
     pad = 1.6
     side = min(h - 2 * pad, w * (0.40 if w < 50 else 0.45))
-    _draw_qr(pdf, qr_text(d, opts["qr"]), x0 + pad, y0 + (h - side) / 2, side)
+    qr = {"x": x0 + pad, "y": y0 + (h - side) / 2, "side": side, "data": qr_text(d, opts["qr"])}
     tx = x0 + pad + side + 1.6
     tw = x0 + w - pad - tx
-    size, lines = _layout(pdf, lines_for(d, opts["note"]), tw, h - 2 * pad)
+    size, lines = _layout(pdf, lines_for(d, opts), tw, h - 2 * pad)
     # Whatever still does not fit at the smallest size is left out (the QR code has it).
     lines = lines[:max(1, int((h - 2 * pad) / (size * LINE)))]
     y = y0 + max(pad, (h - len(lines) * size * LINE) / 2)
-    pdf.set_text_color(0, 0, 0)
+    placed = []
     for text, bold in lines:
-        pdf.set_font("ui", "B" if bold else "", size)
-        pdf.set_xy(tx, y)
-        pdf.cell(tw, size * LINE, text)
+        placed.append({"x": tx, "y": y, "w": tw, "h": size * LINE, "size": size, "bold": bold, "text": text})
         y += size * LINE
+    return {"qr": qr, "lines": placed}
+
+
+def _draw_label(pdf: FPDF, d: dict, opts: dict, x0: float, y0: float, w: float, h: float) -> None:
+    a = _arrange(pdf, d, opts, x0, y0, w, h)
+    _draw_qr(pdf, a["qr"]["data"], a["qr"]["x"], a["qr"]["y"], a["qr"]["side"])
+    pdf.set_text_color(0, 0, 0)
+    for ln in a["lines"]:
+        pdf.set_font("ui", "B" if ln["bold"] else "", ln["size"])
+        pdf.set_xy(ln["x"], ln["y"])
+        pdf.cell(ln["w"], ln["h"], ln["text"])
 
 
 def build(devices: list[dict], opts: dict) -> Path:
@@ -234,3 +271,30 @@ def make(device_ids: list[str], opts: dict, open_after: bool = True) -> Path | N
     if open_after:
         open_file(path)
     return path
+
+
+SAMPLE = {"id": "sample", "serial": "F2LXK0ABCD12", "model_name": "iPhone 15 Pro", "capacity": "256 ГБ",
+          "imei": "356789012345678", "ios": "18.6", "battery": 91, "last_seen": "",
+          "note": "A-12", "events": [{"action": "Диагностика", "result": "ok"}]}
+
+
+def preview(opts: dict, device: dict | None = None) -> dict:
+    """One sticker laid out for the preview in Settings (the latest phone from the history,
+    or a sample one): its size, the QR code's squares and each text line, in mm, so the
+    window can draw it. Nothing is saved."""
+    d = dict(device or SAMPLE)
+    if not d.get("last_seen"):
+        d["last_seen"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if opts.get("note") and not d.get("note"):
+        d["note"] = "A-12"
+    size = opts.get("size") if opts.get("size") in SIZES else DEFAULTS["size"]
+    w, h = SIZES[size]  # for the A4 sheet: one of its stickers
+    pdf = _Labels("a4one" if size == "a4" else size)
+    pdf.add_page()
+    a = _arrange(pdf, d, {**DEFAULTS, **opts}, 0, 0, w, h)
+    matrix = ["".join("1" if c else "0" for c in row) for row in segno.make(a["qr"]["data"] or "-", error="m").matrix]
+    a["qr"]["matrix"] = matrix
+    del a["qr"]["data"]
+    for ln in a["lines"]:
+        ln.update({k: round(ln[k], 3) for k in ("x", "y", "w", "h", "size")})
+    return {"w": w, "h": h, **a}
