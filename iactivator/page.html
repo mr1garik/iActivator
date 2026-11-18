@@ -471,6 +471,9 @@
           <option value="ru">Русский</option>
           <option value="uk">Українська</option>
           <option value="en">English</option>
+          <option value="pl">Polski</option>
+          <option value="es">Español</option>
+          <option value="de">Deutsch</option>
         </select></div>
     </div>
     <div class="card">
@@ -867,6 +870,7 @@ const T_EN = {
   "Записи журнала скопированы": "Journal entries copied",
   "✅ Журнал выгружен в файл": "✅ Journal exported to file",
   "Адрес": "Address", "скопирован": "copied", "Введите имя сети": "Enter a network name",
+  "версия": "version",
   "Доступна новая версия": "A new version is available", "у вас": "you have",
   "История и настройки сохранятся.": "Your history and settings are kept.",
   "Есть новая версия": "A new version is available",
@@ -1084,6 +1088,7 @@ const T_UK = {
   "новая батарея": "нова батарея", "батарея": "батарея", "Сохранено": "Збережено", "Загружено": "Завантажено",
   "✅ Журнал выгружен в файл": "✅ Журнал вивантажено у файл",
   "Адрес": "Адреса", "скопирован": "скопійовано", "Введите имя сети": "Введіть ім'я мережі",
+  "версия": "версія",
   "Доступна новая версия": "Доступна нова версія", "у вас": "у вас",
   "История и настройки сохранятся.": "Історія та налаштування збережуться.",
   "Есть новая версия": "Є нова версія",
@@ -1143,8 +1148,236 @@ const T_UK = {
 // Sizes stored by an earlier (Russian) run: show them in the current language.
 function cap(s) { return (LANG === "en" || LANG === "pl") && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
 // Any language falls back to English for strings it has not translated yet.
-const T_PL = {};  // Polish overrides; missing keys fall back to English
-const T_DICTS = { en: T_EN, uk: T_UK, pl: T_PL };
+// Core UI in more languages; anything missing falls back to English.
+const T_PL = {
+  "Активация": "Aktywacja",
+  "Диагностика": "Diagnostyka",
+  "История": "Historia",
+  "Журнал": "Dziennik",
+  "Статистика": "Statystyka",
+  "Настройки": "Ustawienia",
+  "О программе": "O programie",
+  "Нет устройства": "Brak urządzenia",
+  "Состояние подключения": "Stan połączenia",
+  "Подключите iPhone кабелем.": "Podłącz iPhone kablem.",
+  "Подключите iPhone кабелем…": "Podłącz iPhone kablem…",
+  "Готово": "Gotowe",
+  "Запустить": "Uruchom",
+  "Обновить": "Odśwież",
+  "Проверить": "Sprawdź",
+  "PDF-отчёт": "Raport PDF",
+  "Отмена": "Anuluj",
+  "Продолжить": "Kontynuuj",
+  "Сохранить": "Zapisz",
+  "Открыть файл": "Otwórz plik",
+  "Отчёты": "Raporty",
+  "Открыть журнал": "Otwórz dziennik",
+  "Выгрузить в файл": "Zapisz do pliku",
+  "Язык и регион": "Język i region",
+  "Язык": "Język",
+  "Регион": "Region",
+  "Часовой пояс": "Strefa czasowa",
+  "Режим": "Tryb",
+  "Активировать": "Aktywuj",
+  "Пропустить экраны настройки": "Pomiń ekrany konfiguracji",
+  "Все": "Wszystkie",
+  "24 ч": "24 h",
+  "Оформление": "Wygląd",
+  "Тема": "Motyw",
+  "Язык программы": "Język programu",
+  "Как в системе": "Jak w systemie",
+  "Светлая": "Jasny",
+  "Тёмная": "Ciemny",
+  "Запуск": "Uruchamianie",
+  "Перенос настроек": "Przenoszenie ustawień",
+  "Открыть страницу загрузки": "Otwórz stronę pobierania",
+  "Активации": "Aktywacje",
+  "Проверки": "Sprawdzenia",
+  "Сегодня": "Dziś",
+  "7 дней": "7 dni",
+  "30 дней": "30 dni",
+  "Всего": "Razem",
+  "Всего устройств": "Urządzeń łącznie",
+  "Активировано": "Aktywowano",
+  "С замечаниями": "Z uwagami",
+  "Пока нет данных": "Brak danych",
+  "Модель": "Model",
+  "Серийный №": "Nr seryjny",
+  "Последнее действие": "Ostatnia akcja",
+  "Удалить из истории": "Usuń z historii",
+  "Заметка": "Notatka",
+  "Событий нет": "Brak zdarzeń",
+  "Сохранить TXT": "Zapisz TXT",
+  "Все в TXT": "Wszystkie do TXT",
+  "Очистить всё": "Wyczyść wszystko",
+  "Наклейка": "Naklejka",
+  "Наклейки": "Naklejki",
+  "Ничего не найдено": "Nic nie znaleziono",
+  "Показано": "Pokazano",
+  "из": "z",
+  "Батарея": "Bateria",
+  "Память": "Pamięć",
+  "Годен": "Sprawny",
+  "Не годен": "Niesprawny",
+  "Годен с замечаниями": "Sprawny z uwagami",
+  "версия": "wersja",
+  "Доступна новая версия": "Dostępna nowa wersja",
+  "Скачать и установить": "Pobierz i zainstaluj",
+  "Скачать": "Pobierz",
+};
+const T_ES = {
+  "Активация": "Activación",
+  "Диагностика": "Diagnóstico",
+  "История": "Historial",
+  "Журнал": "Registro",
+  "Статистика": "Estadísticas",
+  "Настройки": "Ajustes",
+  "О программе": "Acerca de",
+  "Нет устройства": "Sin dispositivo",
+  "Состояние подключения": "Estado de conexión",
+  "Подключите iPhone кабелем.": "Conecta el iPhone con un cable.",
+  "Подключите iPhone кабелем…": "Conecta el iPhone con un cable…",
+  "Готово": "Listo",
+  "Запустить": "Iniciar",
+  "Обновить": "Actualizar",
+  "Проверить": "Comprobar",
+  "PDF-отчёт": "Informe PDF",
+  "Отмена": "Cancelar",
+  "Продолжить": "Continuar",
+  "Сохранить": "Guardar",
+  "Открыть файл": "Abrir archivo",
+  "Отчёты": "Informes",
+  "Открыть журнал": "Abrir el registro",
+  "Выгрузить в файл": "Exportar a archivo",
+  "Язык и регион": "Idioma y región",
+  "Язык": "Idioma",
+  "Регион": "Región",
+  "Часовой пояс": "Zona horaria",
+  "Режим": "Modo",
+  "Активировать": "Activar",
+  "Пропустить экраны настройки": "Omitir pantallas de configuración",
+  "Все": "Todos",
+  "24 ч": "24 h",
+  "Оформление": "Apariencia",
+  "Тема": "Tema",
+  "Язык программы": "Idioma del programa",
+  "Как в системе": "Como el sistema",
+  "Светлая": "Claro",
+  "Тёмная": "Oscuro",
+  "Запуск": "Inicio",
+  "Перенос настроек": "Transferir ajustes",
+  "Открыть страницу загрузки": "Abrir la página de descarga",
+  "Активации": "Activaciones",
+  "Проверки": "Comprobaciones",
+  "Сегодня": "Hoy",
+  "7 дней": "7 días",
+  "30 дней": "30 días",
+  "Всего": "Total",
+  "Всего устройств": "Dispositivos en total",
+  "Активировано": "Activados",
+  "С замечаниями": "Con observaciones",
+  "Пока нет данных": "Aún no hay datos",
+  "Модель": "Modelo",
+  "Серийный №": "N.º de serie",
+  "Последнее действие": "Última acción",
+  "Удалить из истории": "Eliminar del historial",
+  "Заметка": "Nota",
+  "Событий нет": "Sin eventos",
+  "Сохранить TXT": "Guardar TXT",
+  "Все в TXT": "Todos a TXT",
+  "Очистить всё": "Borrar todo",
+  "Наклейка": "Etiqueta",
+  "Наклейки": "Etiquetas",
+  "Ничего не найдено": "No se encontró nada",
+  "Показано": "Mostrado",
+  "из": "de",
+  "Батарея": "Batería",
+  "Память": "Almacenamiento",
+  "Годен": "Apto",
+  "Не годен": "No apto",
+  "Годен с замечаниями": "Apto con observaciones",
+  "версия": "versión",
+  "Доступна новая версия": "Hay una versión nueva",
+  "Скачать и установить": "Descargar e instalar",
+  "Скачать": "Descargar",
+};
+const T_DE = {
+  "Активация": "Aktivierung",
+  "Диагностика": "Diagnose",
+  "История": "Verlauf",
+  "Журнал": "Protokoll",
+  "Статистика": "Statistik",
+  "Настройки": "Einstellungen",
+  "О программе": "Über das Programm",
+  "Нет устройства": "Kein Gerät",
+  "Состояние подключения": "Verbindungsstatus",
+  "Подключите iPhone кабелем.": "iPhone per Kabel anschließen.",
+  "Подключите iPhone кабелем…": "iPhone per Kabel anschließen…",
+  "Готово": "Fertig",
+  "Запустить": "Starten",
+  "Обновить": "Aktualisieren",
+  "Проверить": "Prüfen",
+  "PDF-отчёт": "PDF-Bericht",
+  "Отмена": "Abbrechen",
+  "Продолжить": "Weiter",
+  "Сохранить": "Speichern",
+  "Открыть файл": "Datei öffnen",
+  "Отчёты": "Berichte",
+  "Открыть журнал": "Protokoll öffnen",
+  "Выгрузить в файл": "In Datei exportieren",
+  "Язык и регион": "Sprache und Region",
+  "Язык": "Sprache",
+  "Регион": "Region",
+  "Часовой пояс": "Zeitzone",
+  "Режим": "Modus",
+  "Активировать": "Aktivieren",
+  "Пропустить экраны настройки": "Einrichtungsbildschirme überspringen",
+  "Все": "Alle",
+  "24 ч": "24 h",
+  "Оформление": "Darstellung",
+  "Тема": "Thema",
+  "Язык программы": "Programmsprache",
+  "Как в системе": "Wie das System",
+  "Светлая": "Hell",
+  "Тёмная": "Dunkel",
+  "Запуск": "Autostart",
+  "Перенос настроек": "Einstellungen übertragen",
+  "Открыть страницу загрузки": "Download-Seite öffnen",
+  "Активации": "Aktivierungen",
+  "Проверки": "Prüfungen",
+  "Сегодня": "Heute",
+  "7 дней": "7 Tage",
+  "30 дней": "30 Tage",
+  "Всего": "Gesamt",
+  "Всего устройств": "Geräte insgesamt",
+  "Активировано": "Aktiviert",
+  "С замечаниями": "Mit Anmerkungen",
+  "Пока нет данных": "Noch keine Daten",
+  "Модель": "Modell",
+  "Серийный №": "Seriennr.",
+  "Последнее действие": "Letzte Aktion",
+  "Удалить из истории": "Aus Verlauf löschen",
+  "Заметка": "Notiz",
+  "Событий нет": "Keine Ereignisse",
+  "Сохранить TXT": "TXT speichern",
+  "Все в TXT": "Alle als TXT",
+  "Очистить всё": "Alles löschen",
+  "Наклейка": "Etikett",
+  "Наклейки": "Etiketten",
+  "Ничего не найдено": "Nichts gefunden",
+  "Показано": "Angezeigt",
+  "из": "von",
+  "Батарея": "Batterie",
+  "Память": "Speicher",
+  "Годен": "Bestanden",
+  "Не годен": "Nicht bestanden",
+  "Годен с замечаниями": "Bestanden mit Anmerkungen",
+  "версия": "Version",
+  "Доступна новая версия": "Neue Version verfügbar",
+  "Скачать и установить": "Herunterladen und installieren",
+  "Скачать": "Herunterladen",
+};
+const T_DICTS = { en: T_EN, uk: T_UK, pl: T_PL, es: T_ES, de: T_DE };
 function T(s) { if (LANG === "ru" || s == null) return s; const d = T_DICTS[LANG]; return (d && d[s] != null ? d[s] : undefined) ?? T_EN[s] ?? s; }
 
 // Translate the static shell. Dynamic containers are rendered through T() in JS, so skip them here.
@@ -1175,7 +1408,7 @@ function translateStatic() {
   }
 }
 function applyLang(lang) {
-  LANG = ["en", "uk"].includes(lang) ? lang : "ru";
+  LANG = (lang === "ru" || T_DICTS[lang]) ? lang : "ru";
   try { localStorage.setItem("lang", LANG); } catch {}
   document.documentElement.lang = LANG;
   translateStatic();
@@ -1931,7 +2164,7 @@ $("histBody").onclick = async e => {
   }
   const del = e.target.closest("[data-del]");
   if (del) {
-    if (!confirm(LANG === "en" ? `Delete device ${del.dataset.del} from history?` : LANG === "uk" ? `Видалити пристрій ${del.dataset.del} з історії?` : `Удалить устройство ${del.dataset.del} из истории?`)) return;
+    if (!confirm(LANG === "ru" ? `Удалить устройство ${del.dataset.del} из истории?` : LANG === "uk" ? `Видалити пристрій ${del.dataset.del} з історії?` : `Delete device ${del.dataset.del} from history?`)) return;
     await api("/api/history/delete", { serial: del.dataset.del });
     openRow = null; return loadHistory();
   }
@@ -2006,7 +2239,7 @@ function showSupport(a) {
 function renderAbout() {
   if (!aboutData) return;
   const a = aboutData;
-  $("ver").textContent = (LANG === "en" ? "version " : LANG === "uk" ? "версія " : "версия ") + a.version;
+  $("ver").textContent = T("версия") + " " + a.version;
   $("aboutVer").textContent = LANG === "en" ? "Version " + a.version + " · iPhone activation & setup"
                                             : "Версия " + a.version + " · активация и настройка iPhone";
   $("aboutInfo").innerHTML = [["Версия", a.version], ["Система", a.system], ["Python", a.python],
@@ -2134,7 +2367,7 @@ $("saveNet").onclick = async () => {
 };
 $("delNet").onclick = async () => {
   const ssid = $("saved").value;
-  if (!ssid || !confirm(LANG === "en" ? `Delete the saved network “${ssid}” and its password?` : `Удалить сохранённую сеть «${ssid}» и её пароль?`)) return;
+  if (!ssid || !confirm(LANG === "ru" ? `Удалить сохранённую сеть «${ssid}» и её пароль?` : `Delete the saved network “${ssid}” and its password?`)) return;
   $("saved").value = "";
   await api("/api/network/delete", { ssid });
   await loadSettings(false);
