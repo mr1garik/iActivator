@@ -48,8 +48,9 @@ ACTIVATION = {"Activated": "активирован", "Unactivated": "не акт
 # Shown on the About page. Wallets: (coin and network, address).
 INSTAGRAM = "https://www.instagram.com/perminov.george"
 PANIC_READER = "https://github.com/mr1garik/ios-panic-reader"
+REPO = "https://github.com/mr1garik/iActivator"
 # Links the About page is allowed to open in the browser via /api/open-url.
-OPEN_URL_ALLOWED = {INSTAGRAM, PANIC_READER}
+OPEN_URL_ALLOWED = {INSTAGRAM, PANIC_READER, REPO}
 WALLETS: list[tuple[str, str]] = [("USDT (TRC20)", "TQKtZpsdz7pm9cuXWPE3ZQEboPHva4Uuas")]
 
 PAGE = (Path(__file__).parent / "page.html").read_text(encoding="utf-8")
@@ -68,6 +69,7 @@ def _about() -> dict:
         "pymobiledevice3": pmd3,
         "data_dir": str(core.app_data_dir()),
         "instagram": INSTAGRAM,
+        "repo": REPO,
         "wallets": WALLETS,
         "autostart_supported": autostart.supported(),
         "driver_supported": driver.supported(),
