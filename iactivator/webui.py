@@ -100,6 +100,7 @@ class State:
         self.labels: dict[str, str] = {}
         self.last_device_error = ""
         self.steps: list[dict] = []  # live activation checklist shown in the UI
+        self.applelogin = None  # an owner Apple ID sign-in in progress (core.AppleIDActivation)
 
     def log(self, msg: str, serial: str = "", level: str = "") -> None:
         applog.add(msg, serial, level)
@@ -310,6 +311,22 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(data)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass  # the window was reloaded or closed before the answer: nothing to do
+
+    def _after_applelogin(self, res: dict, serial: str = ""):
+        """Finish an Apple ID sign-in step: pass a form on to the UI, or, on success, record it
+        and drop the sign-in. Credentials are never part of res."""
+        if res.get("activated"):
+            login, STATE.applelogin = STATE.applelogin, None
+            who = serial or (login.serial if login else "")
+            if login is not None:
+                try:
+                    STATE.run(login.close(), timeout=20)
+                except Exception:
+                    pass
+            if who:
+                history.add_event(who, "Активация", "ok", t("Вход владельца Apple ID"))
+                STATE.log(t("✅ Блокировка активации снята входом владельца."), who, "ok")
+        return res
 
     def _fail(self, e: Exception, serial: str, what: str):
         STATE.log(f"❌ {t(what)}: {core.short_error(e)}", serial)
@@ -557,9 +574,51 @@ class Handler(BaseHTTPRequestHandler):
             settings.save_last(d)
             return self._send(200, {"ok": True})
 
+        # Owner Apple ID sign-in for Activation Lock. The values (Apple ID, password, a 2FA code)
+        # are forwarded straight to Apple and never logged or stored.
+        if self.path == "/api/activation/applelogin/submit":
+            login = STATE.applelogin
+            if login is None:
+                return self._send(200, {"error": t("Вход прерван. Начните заново.")})
+            try:
+                res = STATE.run(login.submit(d.get("values") or {}), timeout=120)
+            except Exception as e:
+                return self._send(200, {"error": core.short_error(e)})
+            return self._send(200, self._after_applelogin(res))
+        if self.path == "/api/activation/applelogin/cancel":
+            login, STATE.applelogin = STATE.applelogin, None
+            if login is not None:
+                try:
+                    STATE.run(login.close(), timeout=20)
+                except Exception:
+                    pass
+            return self._send(200, {"ok": True})
+
         serial = d.get("serial")
         if not serial:
             return self._send(400, {"error": t("Не выбрано устройство")})
+
+        if self.path == "/api/activation/applelogin/start":
+            if STATE.busy:
+                return self._send(200, {"error": t("Дождитесь окончания текущей операции.")})
+            old, STATE.applelogin = STATE.applelogin, None
+            if old is not None:
+                try:
+                    STATE.run(old.close(), timeout=20)
+                except Exception:
+                    pass
+            login = core.AppleIDActivation(serial, lambda m: STATE.log(m, serial))
+            STATE.log(t("Вход владельца Apple ID для снятия блокировки активации…"), serial)
+            try:
+                res = STATE.run(login.start(), timeout=120)
+            except Exception as e:
+                try:
+                    STATE.run(login.close(), timeout=10)
+                except Exception:
+                    pass
+                return self._fail(e, serial, "Вход Apple ID")
+            STATE.applelogin = login
+            return self._send(200, self._after_applelogin(res, serial))
 
         if self.path == "/api/locks":
             try:

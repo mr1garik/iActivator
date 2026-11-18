@@ -214,6 +214,9 @@
   .plist .r .k { width:168px; flex:none; color:var(--muted); }
   .plist .r .v { flex:1; font-weight:600; word-break:break-word; } .plist .r .v.off { color:var(--muted); font-weight:400; }
   .modal .foot { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+  #appleLoginForm .fld { display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+  #appleLoginForm .fld span { font-size:12px; color:var(--muted); }
+  #appleLoginForm input { width:100%; }
 
   @media (max-width: 860px) {
     .grid, .results { grid-template-columns:1fr; }
@@ -574,6 +577,23 @@
 </div>
 </div>
 
+<div class="modal" id="appleLogin">
+  <div class="box" style="max-width:460px">
+    <h3 id="appleLoginTitle">Вход владельца Apple ID</h3>
+    <p class="sub" id="appleLoginDesc">Снимите блокировку активации входом владельца. Это не обход: Apple проверяет данные.</p>
+    <div class="wifihint" style="margin:0 0 14px;align-items:flex-start">
+      <svg><use href="#i-alert"/></svg>
+      <span>Вводите только свой Apple ID или Apple ID владельца с его разрешения. Данные уходят только в Apple и нигде не сохраняются.</span>
+    </div>
+    <form id="appleLoginForm" autocomplete="off"></form>
+    <div id="appleLoginErr" class="empty" style="color:var(--danger);margin-top:8px;display:none"></div>
+    <div class="foot">
+      <button type="button" id="appleLoginCancel">Отмена</button>
+      <button type="button" class="primary" id="appleLoginSubmit"><svg><use href="#i-play"/></svg>Продолжить</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="lblDialog">
   <div class="box" style="max-width:560px">
     <h3>Наклейка</h3>
@@ -702,6 +722,12 @@ const T_EN = {
   "Последний телефон из истории или пример. Так наклейка выйдет на печать.": "The latest phone from the history, or a sample. This is how the sticker prints.",
   "Поправьте строки перед печатью. Изменения только для этой наклейки — шаблон в Настройках не меняется.": "Adjust the lines before printing. The changes are for this sticker only — the template in Settings stays as it is.",
   "+ Строка": "+ Line", "Как в шаблоне": "As in the template", "Сделать PDF": "Make PDF", "Жирный": "Bold", "Убрать строку": "Remove line",
+  "Вход владельца Apple ID": "Owner Apple ID sign-in",
+  "Снимите блокировку активации входом владельца. Это не обход: Apple проверяет данные.": "Clear Activation Lock by signing in as the owner. This is not a bypass: Apple checks the details.",
+  "Вводите только свой Apple ID или Apple ID владельца с его разрешения. Данные уходят только в Apple и нигде не сохраняются.": "Enter only your own Apple ID, or the owner's with their permission. The details go only to Apple and are not saved anywhere.",
+  "Продолжить": "Continue", "Войти в Apple ID владельца": "Sign in with the owner's Apple ID",
+  "Соединяюсь с Apple…": "Connecting to Apple…", "iPhone уже активирован — блокировки нет.": "The iPhone is already activated — no lock.",
+  "Готово: блокировка активации снята.": "Done: Activation Lock cleared.", "Заполните поля.": "Fill in the fields.",
   "Сохранить TXT": "Save TXT", "Заметка": "Note",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
@@ -913,6 +939,12 @@ const T_UK = {
   "Последний телефон из истории или пример. Так наклейка выйдет на печать.": "Останній телефон з історії або приклад. Так наліпка вийде на друк.",
   "Поправьте строки перед печатью. Изменения только для этой наклейки — шаблон в Настройках не меняется.": "Виправте рядки перед друком. Зміни лише для цієї наліпки — шаблон у Налаштуваннях не змінюється.",
   "+ Строка": "+ Рядок", "Как в шаблоне": "Як у шаблоні", "Сделать PDF": "Зробити PDF", "Жирный": "Жирний", "Убрать строку": "Прибрати рядок",
+  "Вход владельца Apple ID": "Вхід власника Apple ID",
+  "Снимите блокировку активации входом владельца. Это не обход: Apple проверяет данные.": "Зніміть блокування активації входом власника. Це не обхід: Apple перевіряє дані.",
+  "Вводите только свой Apple ID или Apple ID владельца с его разрешения. Данные уходят только в Apple и нигде не сохраняются.": "Вводьте лише свій Apple ID або Apple ID власника з його дозволу. Дані йдуть лише в Apple і ніде не зберігаються.",
+  "Продолжить": "Продовжити", "Войти в Apple ID владельца": "Увійти в Apple ID власника",
+  "Соединяюсь с Apple…": "З'єднуюся з Apple…", "iPhone уже активирован — блокировки нет.": "iPhone уже активований — блокування немає.",
+  "Готово: блокировка активации снята.": "Готово: блокування активації знято.", "Заполните поля.": "Заповніть поля.",
   "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
@@ -1049,7 +1081,7 @@ function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" 
 
 // Translate the static shell. Dynamic containers are rendered through T() in JS, so skip them here.
 const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",
-  "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult",
+  "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult", "appleLoginForm",
   "status", "connText", "ver", "aboutVer", "netCount", "histCount", "device", "language", "region",
   "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage", "histShown", "lblPreview", "lblEditPreview", "lblEditLines"]);
 const _i18nText = new WeakMap(), _i18nAttr = new WeakMap();
@@ -1314,8 +1346,59 @@ async function loadLocks(record) {
   const res = await api("/api/locks", { serial: $("device").value, record: !!record });
   if (res.error) { box.innerHTML = `<div class="empty">${T("Локатор/MDM")}: ${esc(res.error)}</div>`; return []; }
   box.innerHTML = res.map(r => `<div class="badge">${dot(r.status)}<div><b>${esc(r.name)}</b><small>${esc(r.detail)}</small></div></div>`).join("");
+  // Activation Lock found -> offer the owner sign-in.
+  if (res.some(r => r.status === "bad" && /Локатор|Activation|активаци/i.test(r.name + r.detail)))
+    box.innerHTML += `<button id="appleLoginOpen" style="margin-top:8px"><svg><use href="#i-alert"/></svg>${T("Войти в Apple ID владельца")}</button>`;
   return res;
 }
+
+// ---------- owner Apple ID sign-in for Activation Lock ----------
+// Apple decides which fields to ask for (Apple ID, password, then a 2FA code), so the form
+// is built from what the server sends. Values go to the backend, which forwards them only to
+// Apple; they are never stored here.
+function renderAppleForm(form) {
+  $("appleLoginTitle").textContent = form.title || T("Вход владельца Apple ID");
+  $("appleLoginDesc").textContent = form.description || "";
+  $("appleLoginForm").innerHTML = form.fields.map(f => `<label class="fld">
+      <span>${esc(f.label || f.id)}</span>
+      <input type="${f.secure ? "password" : "text"}" data-fid="${esc(f.id)}"
+        placeholder="${esc(f.placeholder || "")}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>`).join("");
+  $("appleLoginErr").style.display = "none";
+  const first = $("appleLoginForm").querySelector("input"); if (first) first.focus();
+}
+async function openAppleLogin() {
+  const serial = $("device").value;
+  if (!serial) return alert(T("Подключите iPhone кабелем."));
+  $("appleLogin").classList.add("on");
+  $("appleLoginForm").innerHTML = `<div class="empty">${T("Соединяюсь с Apple…")}</div>`;
+  $("appleLoginErr").style.display = "none";
+  const res = await api("/api/activation/applelogin/start", { serial });
+  if (res.error) { $("appleLoginForm").innerHTML = ""; $("appleLoginErr").textContent = res.error; $("appleLoginErr").style.display = ""; return; }
+  if (res.activated) { closeAppleLogin(); alert(T("iPhone уже активирован — блокировки нет.")); return onDevice(false); }
+  renderAppleForm(res.form);
+}
+async function submitAppleLogin() {
+  const values = {};
+  $("appleLoginForm").querySelectorAll("[data-fid]").forEach(i => values[i.dataset.fid] = i.value);
+  if (!Object.values(values).some(v => v.trim())) { $("appleLoginErr").textContent = T("Заполните поля."); $("appleLoginErr").style.display = ""; return; }
+  const btn = $("appleLoginSubmit"); btn.disabled = true;
+  try {
+    const res = await api("/api/activation/applelogin/submit", { values });
+    for (const k in values) values[k] = "";  // drop the typed values
+    if (res.error) { $("appleLoginErr").textContent = res.error; $("appleLoginErr").style.display = ""; return; }
+    if (res.activated) { closeAppleLogin(); alert(T("Готово: блокировка активации снята.")); onDevice(false); return; }
+    renderAppleForm(res.form);  // next step, e.g. the 2FA code
+  } finally { btn.disabled = false; }
+}
+function closeAppleLogin() {
+  $("appleLogin").classList.remove("on");
+  $("appleLoginForm").innerHTML = "";
+  api("/api/activation/applelogin/cancel", {});
+}
+document.addEventListener("click", e => { if (e.target.closest("#appleLoginOpen")) openAppleLogin(); });
+$("appleLoginSubmit").onclick = submitAppleLogin;
+$("appleLoginForm").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); submitAppleLogin(); } });
+$("appleLoginCancel").onclick = closeAppleLogin;
 
 // ---------- settings ----------
 function fillNets() {

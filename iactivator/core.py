@@ -588,6 +588,124 @@ async def _activation_lock_status(lockdown) -> Optional[bool]:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Activation-Lock sign-in by the OWNER.
+#
+# When an iPhone is locked to an Apple ID, Apple's activation server answers with a
+# sign-in page instead of an activation record. The legitimate way past it is the owner
+# proving ownership with their own Apple ID (and, with two-factor, the code from a trusted
+# device). This is authentication, not a bypass: Apple checks the credentials and a wrong
+# answer simply fails. The credentials go ONLY to Apple's activation server over the
+# library's verified HTTPS, are never written to history, the journal, settings or the log,
+# and are cleared from memory after each step.
+# ---------------------------------------------------------------------------
+def _is_secure_field(editable) -> bool:
+    val = str(editable.get("secure", "")).strip().lower()
+    if val in ("true", "1", "yes"):
+        return True
+    label = (editable.get("label") or "").lower()
+    return any(w in label for w in ("password", "пароль", "пароль", "passcode", "код", "code"))
+
+
+def parse_activation_form(content: bytes) -> dict:
+    """Turn Apple's sign-in page (BuddyML) into the fields to show the owner.
+
+    Returns {title, description, fields: [{id, label, secure, placeholder}], server_info},
+    where server_info is Apple's hidden data that must be sent back with the answer."""
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(content.decode("utf-8", "replace") if isinstance(content, bytes) else content)
+    nav = root.find("page/navigationBar")
+    footer = root.find("page/tableView/section/footer")
+    info_node = root.find("serverInfo")
+    fields = []
+    for editable in root.findall("page//editableTextRow"):
+        fid = editable.get("id")
+        if fid:
+            fields.append({"id": fid, "label": editable.get("label") or "",
+                           "secure": _is_secure_field(editable),
+                           "placeholder": editable.get("placeholder") or ""})
+    return {"title": (nav.get("title") if nav is not None else "") or "",
+            "description": (footer.text if footer is not None else "") or "",
+            "fields": fields,
+            "server_info": dict(info_node.items()) if info_node is not None else {}}
+
+
+class AppleIDActivation:
+    """Drives the owner sign-in step by step: start() begins activation and returns either
+    that the phone is already activated/not locked, or the first Apple form; submit(values)
+    sends the owner's answers and returns the next form (e.g. the two-factor code) or success.
+    Credentials are held only for the one request that sends them to Apple, then cleared."""
+
+    def __init__(self, serial: str, log: Log):
+        self.serial = serial
+        self.log = log
+        self.lockdown: Optional[LockdownClient] = None
+        self.service = None
+        self.session_mode = False
+        self._server_info: dict = {}
+        self.done = False
+
+    async def start(self) -> dict:
+        self.lockdown = await create_using_usbmux(serial=self.serial, autopair=True, pair_timeout=60)
+        self.service = MobileActivationService(self.lockdown)
+        if await self.service.state() != "Unactivated":
+            self.done = True
+            return {"activated": True}
+        headers = {"Content-Type": "application/x-apple-plist", **ACTIVATION_HEADERS}
+        try:
+            blob = await self.service.create_activation_session_info()
+            handshake, _ = await asyncio.to_thread(
+                self.service.post, ACTIVATION_DRM_HANDSHAKE_URL, plistlib.dumps(blob), headers)
+            activation_info = await self.service.create_activation_info_with_session(handshake)
+            self.session_mode = True
+        except Exception:
+            activation_info = await self.lockdown.get_value(key="ActivationInfo")
+            self.session_mode = False
+        content, resp_headers = await asyncio.to_thread(
+            self.service.post, ACTIVATION_URL, {"activation-info": plistlib.dumps(activation_info)})
+        return await self._handle(content, resp_headers)
+
+    async def submit(self, values: dict) -> dict:
+        if self.service is None:
+            raise UserFacingError(t("Вход прерван. Начните заново."))
+        data = {k: ("" if v is None else str(v)) for k, v in (values or {}).items()}
+        data.update(self._server_info)
+        try:
+            content, resp_headers = await asyncio.to_thread(self.service.post, ACTIVATION_URL, data)
+        finally:
+            data.clear()  # the password lived only for the one request to Apple
+        return await self._handle(content, resp_headers)
+
+    async def _handle(self, content: bytes, resp_headers) -> dict:
+        ctype = resp_headers.get("Content-Type", "")
+        if "buddyml" in ctype:
+            form = parse_activation_form(content)
+            self._server_info = form.pop("server_info")
+            if not form["fields"]:
+                raise UserFacingError(t("Apple просит подтверждение, но не прислала полей для ввода. "
+                                        "Повторите вход владельца на самом iPhone."))
+            return {"form": form}
+        if "xml" not in ctype:
+            raise UserFacingError(t("Apple вернула неожиданный ответ. Повторите позже."))
+        if self.session_mode:
+            await self.service.activate_with_session(content, resp_headers)
+        else:
+            await self.service.activate_with_lockdown(content)
+        try:
+            await self.lockdown.set_value(True, key="ActivationStateAcknowledged")
+        except Exception:
+            pass
+        self.done = True
+        return {"activated": True}
+
+    async def close(self) -> None:
+        self._server_info = {}
+        self.service = None
+        if self.lockdown is not None:
+            await _close_quietly(self.lockdown)
+            self.lockdown = None
+
+
 NETWORK_ERRORS = {"ConnectionError", "ConnectTimeout", "ReadTimeout", "Timeout", "SSLError", "ProxyError",
                   "URLError", "gaierror", "TimeoutError", "ConnectionRefusedError", "ConnectionResetError",
                   "NewConnectionError", "MaxRetryError", "NameResolutionError"}
