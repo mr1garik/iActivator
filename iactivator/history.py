@@ -252,6 +252,41 @@ def summary() -> dict:
     }
 
 
+def stats_report(days: int = 30) -> dict:
+    """Totals and a per-day series for the Statistics view: activations (Активация, ok) and
+    diagnostics runs (Диагностика), for today / the last 7 and 30 days / all time."""
+    from datetime import timedelta
+    today = datetime.now().date()
+    start = today - timedelta(days=days - 1)
+    week = today - timedelta(days=6)
+    month = today - timedelta(days=29)
+    series = {(start + timedelta(i)).isoformat(): {"act": 0, "check": 0} for i in range(days)}
+    tot = {"act": {"today": 0, "week": 0, "month": 0, "all": 0},
+           "check": {"today": 0, "week": 0, "month": 0, "all": 0}}
+    with _lock:
+        data = {k: list(d.get("events", [])) for k, d in _load().items()}
+    for events in data.values():
+        for e in events:
+            if e.get("action") == "Активация" and e.get("result") == "ok":
+                kind = "act"
+            elif e.get("action") == "Диагностика":
+                kind = "check"
+            else:
+                continue
+            day = (e.get("time") or "")[:10]
+            tot[kind]["all"] += 1
+            if day:
+                if day == today.isoformat():
+                    tot[kind]["today"] += 1
+                if day >= week.isoformat():
+                    tot[kind]["week"] += 1
+                if day >= month.isoformat():
+                    tot[kind]["month"] += 1
+                if day in series:
+                    series[day][kind] += 1
+    return {"totals": tot, "days": [{"d": d, **v} for d, v in sorted(series.items())]}
+
+
 NOTE_MAX = 1000
 
 

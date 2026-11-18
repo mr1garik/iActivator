@@ -391,6 +391,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, layout)
         if self.path == "/api/history":
             return self._send(200, history.summary())
+        if self.path == "/api/stats":
+            return self._send(200, history.stats_report())
         if self.path == "/api/files/usage":
             u = devicetext.usage()
             return self._send(200, {**u, "size": _size(u["bytes"]), "devices": len(history.export())})

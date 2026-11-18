@@ -117,6 +117,10 @@
   .stat:hover { border-color:var(--brand); }
   .stat.on { border-color:var(--brand); box-shadow:0 0 0 1px var(--brand) inset; }
   .hist-filters { margin-top:8px; align-items:center; }
+  .statsvg { width:100%; height:auto; stroke:none; fill:none; }
+  .chart-legend { display:flex; gap:16px; margin-top:8px; font-size:12px; color:var(--muted); }
+  .chart-legend span { display:flex; align-items:center; gap:6px; }
+  .chart-legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
   .lbl-lines { display:grid; grid-template-columns:repeat(2, minmax(150px, 1fr)); gap:4px 16px; font-size:13px; }
   .lbl-lines label { display:flex; gap:6px; align-items:center; }
   .lbl-preview { display:flex; flex-direction:column; gap:4px; }
@@ -240,6 +244,7 @@
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5.5"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
@@ -268,6 +273,7 @@
     <a data-page="check"><svg><use href="#i-pulse"/></svg><span>Диагностика</span></a>
     <a data-page="history"><svg><use href="#i-clock"/></svg><span>История</span><span class="count" id="histCount"></span></a>
     <a data-page="log"><svg><use href="#i-list"/></svg><span>Журнал</span></a>
+    <a data-page="stats"><svg><use href="#i-chart"/></svg><span>Статистика</span></a>
     <a data-page="settings"><svg><use href="#i-gear"/></svg><span>Настройки</span></a>
     <a data-page="about"><svg><use href="#i-info"/></svg><span>О программе</span></a>
   </nav>
@@ -432,6 +438,24 @@
   </section>
 
   <!-- ======== Настройки ======== -->
+  <!-- ======== Статистика ======== -->
+  <section class="page" id="p-stats">
+    <h1>Статистика</h1>
+    <div class="card">
+      <h2>Активации</h2>
+      <div class="stats" id="statAct"></div>
+    </div>
+    <div class="card">
+      <h2>Проверки</h2>
+      <div class="stats" id="statCheck"></div>
+    </div>
+    <div class="card">
+      <h2>Активность за 30 дней</h2>
+      <div id="statChart"></div>
+      <div class="chart-legend"><span><i style="background:var(--brand)"></i>Активации</span><span><i style="background:var(--muted)"></i>Проверки</span></div>
+    </div>
+  </section>
+
   <section class="page" id="p-settings">
     <h1>Настройки</h1>
     <div class="card">
@@ -745,6 +769,7 @@ const T_EN = {
   "Репозиторий": "Repository", "Открыть репозиторий на GitHub": "Open the repository on GitHub",
   "Либо на самом iPhone нажмите «Разблокировать с помощью код-пароля?» и введите старый код-пароль устройства (iOS 15.2 и новее) — тогда Apple ID здесь не нужен.": "Or, on the iPhone itself, tap \u201cUnlock with Passcode?\u201d and enter the device's old passcode (iOS 15.2 or newer) \u2014 then no Apple ID is needed here.",
   "Батарея": "Battery", "циклы": "cycles", "ёмкость снизилась": "capacity dropped",
+  "Статистика": "Statistics", "Активации": "Activations", "Проверки": "Checks", "7 дней": "7 days", "30 дней": "30 days", "Активность за 30 дней": "Activity over 30 days", "Пока нет данных": "No data yet",
   "Сохранить TXT": "Save TXT", "Заметка": "Note",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
@@ -967,6 +992,7 @@ const T_UK = {
   "Репозиторий": "Репозиторій", "Открыть репозиторий на GitHub": "Відкрити репозиторій на GitHub",
   "Либо на самом iPhone нажмите «Разблокировать с помощью код-пароля?» и введите старый код-пароль устройства (iOS 15.2 и новее) — тогда Apple ID здесь не нужен.": "Або на самому iPhone натисніть «Розблокувати за допомогою коду-пароля?» і введіть старий код-пароль пристрою (iOS 15.2 або новіша) — тоді Apple ID тут не потрібен.",
   "Батарея": "Батарея", "циклы": "цикли", "ёмкость снизилась": "ємність знизилась",
+  "Статистика": "Статистика", "Активации": "Активації", "Проверки": "Перевірки", "7 дней": "7 днів", "30 дней": "30 днів", "Активность за 30 дней": "Активність за 30 днів", "Пока нет данных": "Поки немає даних",
   "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
@@ -1105,7 +1131,7 @@ function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" 
 const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",
   "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult", "appleLoginForm",
   "status", "connText", "ver", "aboutVer", "netCount", "histCount", "device", "language", "region",
-  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage", "histShown", "lblPreview", "lblEditPreview", "lblEditLines"]);
+  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage", "histShown", "lblPreview", "lblEditPreview", "lblEditLines", "statAct", "statCheck", "statChart"]);
 const _i18nText = new WeakMap(), _i18nAttr = new WeakMap();
 function _skip(el) { for (let n = el; n; n = n.parentElement) if (n.id && I18N_SKIP.has(n.id)) return true; return false; }
 function translateStatic() {
@@ -1177,7 +1203,35 @@ function show(page) {
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.dataset.page === page));
   document.querySelectorAll(".page").forEach(p => p.classList.toggle("on", p.id === "p-" + page));
   if (page === "history") loadHistory();
+  if (page === "stats") loadStats();
   if (page === "log") $("log").scrollTop = $("log").scrollHeight;
+}
+
+
+// ---------- statistics ----------
+async function loadStats() {
+  let r;
+  try { r = await api("/api/stats"); } catch { return; }
+  const tile = (label, n) => `<div class="stat"><b>${n}</b><span>${T(label)}</span></div>`;
+  const row = t => tile("Сегодня", t.today) + tile("7 дней", t.week) + tile("30 дней", t.month) + tile("Всего", t.all);
+  $("statAct").innerHTML = row(r.totals.act);
+  $("statCheck").innerHTML = row(r.totals.check);
+  $("statChart").innerHTML = statChart(r.days);
+}
+function statChart(days) {
+  if (!days || !days.length) return `<div class="empty">${T("Пока нет данных")}</div>`;
+  const max = Math.max(1, ...days.map(d => Math.max(d.act, d.check)));
+  const W = 700, H = 150, pad = 18, bw = (W - pad * 2) / days.length;
+  const y = v => H - pad - (v / max) * (H - pad * 2);
+  let bars = "";
+  days.forEach((d, i) => {
+    const x = pad + i * bw, w = Math.max(1, bw / 2 - 1);
+    bars += `<rect x="${(x + 1).toFixed(1)}" y="${y(d.act).toFixed(1)}" width="${w.toFixed(1)}" height="${(H - pad - y(d.act)).toFixed(1)}" fill="var(--brand)"><title>${d.d}: ${T("Активации")} ${d.act}</title></rect>`;
+    bars += `<rect x="${(x + 1 + w).toFixed(1)}" y="${y(d.check).toFixed(1)}" width="${w.toFixed(1)}" height="${(H - pad - y(d.check)).toFixed(1)}" fill="var(--muted)"><title>${d.d}: ${T("Проверки")} ${d.check}</title></rect>`;
+  });
+  const labels = days.map((d, i) => (i % 5 === 0) ? `<text x="${(pad + i * bw + bw / 2).toFixed(1)}" y="${H - 4}" font-size="9" fill="var(--muted)" text-anchor="middle">${d.d.slice(5)}</text>` : "").join("");
+  return `<svg class="statsvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    <line x1="${pad}" y1="${H - pad}" x2="${W - pad}" y2="${H - pad}" stroke="var(--line)"/>${bars}${labels}</svg>`;
 }
 
 // ---------- journal ----------

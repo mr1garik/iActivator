@@ -173,3 +173,34 @@ class BatteryLog(unittest.TestCase):
         history.update_device({"conn_id": "U1", "battery": {"health": 80, "cycles": 200}})
         self.assertLessEqual(len(self.dev()["battery_log"]), history.MAX_BATTERY_LOG)
         self.assertEqual(self.dev()["battery_log"][-1]["h"], 80)  # newest kept
+
+
+class StatsReport(unittest.TestCase):
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self._orig = (history.json_path, history.csv_path)
+        history.json_path = lambda: self.dir / "history.json"
+        history.csv_path = lambda: self.dir / "history.csv"
+        history._reset_cache()
+        self.addCleanup(lambda: setattr(history, "json_path", self._orig[0]))
+        self.addCleanup(lambda: setattr(history, "csv_path", self._orig[1]))
+        self.addCleanup(history._reset_cache)
+
+    def test_counts_activations_and_checks_by_period(self):
+        from datetime import datetime
+        today = datetime.now().strftime("%Y-%m-%d")
+        with history._lock:
+            d = history._entry(history._load(), "U1")
+            d["events"] = [
+                {"time": today + " 10:00:00", "action": "Активация", "result": "ok", "detail": ""},
+                {"time": today + " 10:05:00", "action": "Диагностика", "result": "ok", "detail": ""},
+                {"time": "2020-01-01 09:00:00", "action": "Активация", "result": "ok", "detail": ""},
+                {"time": today + " 11:00:00", "action": "Активация", "result": "error", "detail": ""},  # not counted
+            ]
+            history._save(history._load())
+        r = history.stats_report()
+        self.assertEqual(r["totals"]["act"]["today"], 1)
+        self.assertEqual(r["totals"]["act"]["all"], 2)       # old one counts in all-time
+        self.assertEqual(r["totals"]["check"]["today"], 1)
+        self.assertEqual(len(r["days"]), 30)
+        self.assertEqual(r["days"][-1]["act"], 1)            # today is the last bucket
