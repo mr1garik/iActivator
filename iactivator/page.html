@@ -1141,8 +1141,11 @@ const T_UK = {
   "Графит": "Графіт",
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
-function cap(s) { return LANG === "en" && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
-function T(s) { if (LANG === "ru" || s == null) return s; return (LANG === "en" ? T_EN : T_UK)[s] ?? s; }
+function cap(s) { return (LANG === "en" || LANG === "pl") && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
+// Any language falls back to English for strings it has not translated yet.
+const T_PL = {};  // Polish overrides; missing keys fall back to English
+const T_DICTS = { en: T_EN, uk: T_UK, pl: T_PL };
+function T(s) { if (LANG === "ru" || s == null) return s; const d = T_DICTS[LANG]; return (d && d[s] != null ? d[s] : undefined) ?? T_EN[s] ?? s; }
 
 // Translate the static shell. Dynamic containers are rendered through T() in JS, so skip them here.
 const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",

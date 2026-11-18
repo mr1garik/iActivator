@@ -14,7 +14,7 @@ _lock = threading.Lock()
 _lang = "ru"
 
 
-LANGS = ("ru", "en", "uk")
+LANGS = ("ru", "en", "uk", "pl")
 
 
 def set_lang(code: str) -> None:
@@ -28,8 +28,13 @@ def get_lang() -> str:
 
 
 def t(s: str, **kw) -> str:
-    table = {"en": EN, "uk": UK}.get(_lang)
-    tpl = table.get(s, s) if table else s
+    table = TABLES.get(_lang)
+    if table is None:
+        tpl = s                       # Russian: the key is the text
+    else:
+        tpl = table.get(s)
+        if tpl is None:
+            tpl = EN.get(s, s)        # a newer language falls back to English, then to Russian
     if not kw:
         return tpl
     try:
@@ -847,3 +852,10 @@ UK: dict[str, str] = {
     "Не удалось открыть браузер. Ссылка: {url}": "Не вдалося відкрити браузер. Посилання: {url}",
     "Устройство привязано к Apple ID. Снимается входом владельца: пароль Apple ID (кнопка ниже), или на самом iPhone «Разблокировать с помощью код-пароля?» и старый код-пароль устройства (iOS 15.2+), или отвязка на icloud.com/find": "Пристрій прив'язаний до Apple ID. Знімається входом власника: пароль Apple ID (кнопка нижче), або на самому iPhone «Розблокувати за допомогою коду-пароля?» і старий код-пароль пристрою (iOS 15.2+), або відв'язка на icloud.com/find",
 }
+
+
+# Polish. Only the strings translated here override English; anything missing falls back to
+# English (see t()). Add entries over time to make the Polish UI complete.
+PL: dict[str, str] = {}
+
+TABLES = {"en": EN, "uk": UK, "pl": PL}
