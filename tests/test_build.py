@@ -21,7 +21,7 @@ import json, os, sys, tempfile
 os.environ.setdefault("HOME", tempfile.mkdtemp())
 os.environ.setdefault("APPDATA", os.environ["HOME"])
 sys.path.insert(0, sys.argv[1])
-from iactivator import webui, core, update, report, driver, history, settings, applog, labels, notify, devicetext
+from iactivator import webui, core, update, report, driver, history, settings, applog, labels, notify, devicetext, documents
 import pymobiledevice3.services.crash_reports
 print(json.dumps(sorted({m.split(".")[0] for m in sys.modules})))
 """

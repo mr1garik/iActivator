@@ -501,6 +501,17 @@
         Проверка — при запуске программы и каждые 6 часов.</p>
     </div>
     <div class="card">
+      <h2>Реквизиты для документов</h2>
+      <p class="hint" style="margin-top:0">Подставляются в акты приёма/выдачи и гарантийный талон.</p>
+      <div class="row"><span class="lbl">Название</span><input type="text" id="shopName" maxlength="80" style="max-width:360px" placeholder="Например: Сервис iFix"></div>
+      <div class="row"><span class="lbl">Телефон</span><input type="text" id="shopPhone" maxlength="40" style="max-width:280px" placeholder="+380 …"></div>
+      <div class="row"><span class="lbl">Адрес</span><input type="text" id="shopAddress" maxlength="120" style="max-width:360px" placeholder="Город, улица, дом"></div>
+      <div class="row"><span class="lbl">Гарантия по умолчанию</span>
+        <select id="shopWarranty" style="max-width:200px">
+          <option value="0">Без гарантии</option><option value="1">1 месяц</option><option value="3">3 месяца</option>
+          <option value="6">6 месяцев</option><option value="12">12 месяцев</option></select></div>
+    </div>
+    <div class="card">
       <h2>Наклейки с QR-кодом</h2>
       <label class="sw"><input type="checkbox" id="lblOn"><span class="t">Показывать кнопку «Наклейка» в истории
         <small>PDF точно под размер этикетки — печатается на любом принтере</small></span></label>
@@ -637,6 +648,29 @@
   <i class="spin"></i>
   <div class="status" id="status" title="Открыть журнал">Готово</div>
 </div>
+</div>
+
+<div class="modal" id="docDialog">
+  <div class="box" style="max-width:480px">
+    <h3>Документ</h3>
+    <p class="sub">Заполните поля и создайте PDF. Реквизиты берутся из Настроек.</p>
+    <div class="row"><span class="lbl">Тип</span>
+      <select id="docKind" style="max-width:320px">
+        <option value="intake">Акт приёма</option><option value="handover">Акт выдачи</option><option value="warranty">Гарантийный талон</option></select></div>
+    <div class="row"><span class="lbl">Номер</span><input type="text" id="docNumber" maxlength="20" style="max-width:160px"></div>
+    <div class="row"><span class="lbl">Клиент</span><input type="text" id="docCustomer" maxlength="80" style="max-width:320px"></div>
+    <div class="row"><span class="lbl">Состояние / дефекты</span><input type="text" id="docDefects" maxlength="200" style="max-width:320px"></div>
+    <div class="row" id="docWorkRow"><span class="lbl">Выполненные работы</span><input type="text" id="docWork" maxlength="200" style="max-width:320px"></div>
+    <div class="row"><span class="lbl">Стоимость</span><input type="text" id="docPrice" maxlength="40" style="max-width:200px"></div>
+    <div class="row" id="docWarrantyRow"><span class="lbl">Гарантия, мес.</span>
+      <select id="docWarranty" style="max-width:200px">
+        <option value="">по умолчанию</option><option value="1">1</option><option value="3">3</option><option value="6">6</option><option value="12">12</option></select></div>
+    <div id="docErr" class="empty" style="color:var(--danger);margin-top:6px;display:none"></div>
+    <div class="foot">
+      <button id="docCancel">Отмена</button>
+      <button class="primary" id="docCreate"><svg><use href="#i-file"/></svg>Создать PDF</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="appleLogin">
@@ -945,6 +979,31 @@ const T_EN = {
   "Профиль применён": "Profile applied",
   "Название профиля (язык, регион, Wi-Fi, режим):": "Profile name (language, region, Wi-Fi, mode):",
 
+  "Документ": "Document",
+  "Реквизиты для документов": "Details for documents",
+  "Подставляются в акты приёма/выдачи и гарантийный талон.": "Used in the intake/handover acts and the warranty certificate.",
+  "Название": "Name",
+  "Телефон": "Phone",
+  "Гарантия по умолчанию": "Default warranty",
+  "Без гарантии": "No warranty",
+  "1 месяц": "1 month",
+  "3 месяца": "3 months",
+  "6 месяцев": "6 months",
+  "12 месяцев": "12 months",
+  "Заполните поля и создайте PDF. Реквизиты берутся из Настроек.": "Fill in the fields and create the PDF. The details come from Settings.",
+  "Тип": "Type",
+  "Акт приёма": "Intake act",
+  "Акт выдачи": "Handover act",
+  "Гарантийный талон": "Warranty certificate",
+  "Номер": "Number",
+  "Клиент": "Customer",
+  "Состояние / дефекты": "Condition / defects",
+  "Выполненные работы": "Work done",
+  "Стоимость": "Price",
+  "Гарантия, мес.": "Warranty, months",
+  "по умолчанию": "default",
+  "Создать PDF": "Create PDF",
+
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -1174,6 +1233,31 @@ const T_UK = {
   "Удалить профиль": "Видалити профіль",
   "Профиль применён": "Профіль застосовано",
   "Название профиля (язык, регион, Wi-Fi, режим):": "Назва профілю (мова, регіон, Wi-Fi, режим):",
+
+  "Документ": "Документ",
+  "Реквизиты для документов": "Реквізити для документів",
+  "Подставляются в акты приёма/выдачи и гарантийный талон.": "Підставляються в акти приймання/видачі та гарантійний талон.",
+  "Название": "Назва",
+  "Телефон": "Телефон",
+  "Гарантия по умолчанию": "Гарантія за замовчуванням",
+  "Без гарантии": "Без гарантії",
+  "1 месяц": "1 місяць",
+  "3 месяца": "3 місяці",
+  "6 месяцев": "6 місяців",
+  "12 месяцев": "12 місяців",
+  "Заполните поля и создайте PDF. Реквизиты берутся из Настроек.": "Заповніть поля та створіть PDF. Реквізити беруться з Налаштувань.",
+  "Тип": "Тип",
+  "Акт приёма": "Акт приймання",
+  "Акт выдачи": "Акт видачі",
+  "Гарантийный талон": "Гарантійний талон",
+  "Номер": "Номер",
+  "Клиент": "Клієнт",
+  "Состояние / дефекты": "Стан / дефекти",
+  "Выполненные работы": "Виконані роботи",
+  "Стоимость": "Вартість",
+  "Гарантия, мес.": "Гарантія, міс.",
+  "по умолчанию": "за замовчуванням",
+  "Создать PDF": "Створити PDF",
 
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
@@ -1525,6 +1609,50 @@ function show(page) {
 }
 
 
+
+// ---------- service documents ----------
+function loadShop(shop) {
+  shop = shop || {};
+  $("shopName").value = shop.name || ""; $("shopPhone").value = shop.phone || "";
+  $("shopAddress").value = shop.address || ""; $("shopWarranty").value = String(shop.warranty_months || 0);
+}
+function saveShop() {
+  const shop = { name: $("shopName").value, phone: $("shopPhone").value, address: $("shopAddress").value,
+    warranty_months: $("shopWarranty").value };
+  api("/api/settings/ui", { shop });
+}
+["shopName", "shopPhone", "shopAddress"].forEach(id => { let tmr; $(id).oninput = () => { clearTimeout(tmr); tmr = setTimeout(saveShop, 600); }; });
+$("shopWarranty").onchange = saveShop;
+
+let docId = null;
+function openDocDialog(id) {
+  docId = id;
+  ["docNumber","docCustomer","docDefects","docWork","docPrice"].forEach(i => $(i).value = "");
+  $("docWarranty").value = "";
+  const d = hist && hist.devices.find(x => (x.id || x.serial) === id);
+  if (d && d.note) $("docDefects").value = d.note;   // prefill from the note
+  docKindChanged();
+  $("docErr").style.display = "none";
+  $("docDialog").classList.add("on");
+}
+function docKindChanged() {
+  const k = $("docKind").value;
+  $("docWorkRow").style.display = k === "handover" ? "" : "none";
+  $("docWarrantyRow").style.display = k === "warranty" ? "" : "none";
+}
+$("docKind").onchange = docKindChanged;
+$("docCancel").onclick = () => { $("docDialog").classList.remove("on"); docId = null; };
+$("docCreate").onclick = async () => {
+  const btn = $("docCreate"); btn.disabled = true;
+  try {
+    const fields = { number: $("docNumber").value, customer: $("docCustomer").value, defects: $("docDefects").value,
+      work: $("docWork").value, price: $("docPrice").value, warranty_months: $("docWarranty").value };
+    const res = await api("/api/document", { id: docId, kind: $("docKind").value, fields });
+    if (res.error) { $("docErr").textContent = res.error; $("docErr").style.display = ""; return; }
+    $("docDialog").classList.remove("on"); docId = null; loadFilesUsage();
+  } finally { btn.disabled = false; }
+};
+
 // ---------- statistics ----------
 async function loadStats() {
   let r;
@@ -1815,6 +1943,7 @@ async function loadSettings(applyLast) {
   if (LABELS.enabled) refreshLabelPreview();
   $("lblAll").style.display = LABELS.enabled ? "" : "none";
   $("cleanupDays").value = String(s.ui.cleanup_days || 0);
+  loadShop(s.ui.shop);
   if (["ru", "en", "uk"].includes(s.ui.lang)) { LANG = s.ui.lang; try { localStorage.setItem("lang", LANG); } catch {} }
   networks = s.networks;
   fillNets();
@@ -2196,7 +2325,7 @@ function renderHistory() {
       <label class="note-edit"><span>${T("Заметка")}</span><textarea data-note="${esc(key)}" maxlength="1000" rows="2"
         placeholder="${T("Цена, клиент, дефекты… Видно в TXT, PDF и поиске")}">${esc(d.note || "")}</textarea><small class="empty" data-note-state></small></label>
       ${evs || `<span class="empty">${T("Событий нет")}</span>`}
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">${LABELS.enabled ? `<button data-label="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Наклейка")}</button>` : ""}<button data-txt="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Сохранить TXT")}</button><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">${LABELS.enabled ? `<button data-label="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Наклейка")}</button>` : ""}<button data-doc="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Документ")}</button><button data-txt="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Сохранить TXT")}</button><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
   }).join("");
 }
 // A small chart of how the battery's health (and cycles) changed across checks. A drop
@@ -2251,6 +2380,8 @@ async function makeReport() {
 }
 document.querySelectorAll(".report-btn").forEach(b => b.onclick = makeReport);
 $("histBody").onclick = async e => {
+  const doc = e.target.closest("[data-doc]");
+  if (doc) return openDocDialog(doc.dataset.doc);
   const lbl = e.target.closest("[data-label]");
   if (lbl) return openLabelEditor(lbl.dataset.label);
   const txt = e.target.closest("[data-txt]");

@@ -79,6 +79,7 @@ def load() -> dict:
     data["ui"].setdefault("lang", system_lang())
     data["ui"].setdefault("notify", True)
     data["ui"].setdefault("cleanup_days", 0)
+    data["ui"].setdefault("shop", {"name": "", "phone": "", "address": "", "warranty_months": 0})
     data.setdefault("presets", {})
     return data
 
@@ -170,6 +171,13 @@ def save_ui(values: dict) -> None:
         if isinstance(values.get("labels"), dict):
             from .labels import options  # checks every value; unknown ones are dropped
             data["ui"]["labels"] = options({"labels": {**data["ui"].get("labels", {}), **values["labels"]}})
+        if isinstance(values.get("shop"), dict):
+            shop = {**data["ui"].get("shop", {}), **values["shop"]}
+            data["ui"]["shop"] = {
+                "name": str(shop.get("name", ""))[:80], "phone": str(shop.get("phone", ""))[:40],
+                "address": str(shop.get("address", ""))[:120],
+                "warranty_months": int(shop["warranty_months"]) if str(shop.get("warranty_months", "")).strip().isdigit() else 0,
+            }
         _save(data)
 
 

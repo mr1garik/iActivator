@@ -20,7 +20,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import __version__, applog, autostart, core, devicetext, driver, history, i18n, notify, report, settings, tray, update
+from . import __version__, applog, autostart, core, devicetext, documents, driver, history, i18n, notify, report, settings, tray, update
 from .i18n import t
 
 LANGUAGES = [
@@ -590,6 +590,19 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 applog.exception(e)
                 return self._send(200, {"error": t("Не удалось сделать наклейку: {e}", e=core.short_error(e))})
+        if self.path == "/api/document":
+            kind = d.get("kind", "")
+            device = history.export().get(str(d.get("id") or ""))
+            if device is None:
+                return self._send(200, {"error": t("Этого устройства нет в истории.")})
+            try:
+                path = documents.make(kind, device, settings.load()["ui"].get("shop", {}), d.get("fields") or {})
+            except Exception as e:
+                applog.exception(e)
+                return self._send(200, {"error": t("Не удалось создать документ: {e}", e=core.short_error(e))})
+            history.add_event(str(d.get("id")), "Документ", "info", path.name)
+            STATE.log(t("📄 Документ сохранён: {name}", name=path.name))
+            return self._send(200, {"ok": True})
         if self.path == "/api/history/note":
             if not history.set_note(d.get("serial", ""), str(d.get("note") or "")):
                 return self._send(200, {"error": t("Этого устройства нет в истории.")})
