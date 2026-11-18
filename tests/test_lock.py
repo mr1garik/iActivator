@@ -65,7 +65,7 @@ class LockMessages(unittest.TestCase):
         i18n.set_lang("ru")
 
     def test_device_refusal_is_not_blamed_on_the_internet(self):
-        r = run("Unactivated", RuntimeError("No such value"))
+        r = run("Unactivated", RuntimeError("Unexpected device error 42"))
         status, detail = r["Локатор (блокировка активации)"]
         self.assertEqual(status, "warn")
         self.assertNotIn("интернет", detail)
@@ -81,6 +81,18 @@ class LockMessages(unittest.TestCase):
             err = e
         status, detail = run("Unactivated", err)["Локатор (блокировка активации)"]
         self.assertIn("интернет", detail)
+
+    def test_findmy_unreadable_before_activation_is_a_note_not_a_warning(self):
+        class InvalidServiceError(Exception):
+            pass
+        # New iOS: status can't be read pre-activation -> info, not warn.
+        status, detail = run("Unactivated", InvalidServiceError("The device does not offer the requested service."))["Локатор (блокировка активации)"]
+        self.assertEqual(status, "info")
+        self.assertIn("после активации", detail)
+
+    def test_no_such_value_is_also_a_note(self):
+        status, _ = run("Unactivated", RuntimeError("No such value"))["Локатор (блокировка активации)"]
+        self.assertEqual(status, "info")
 
     def test_mdm_unavailable_before_activation_is_only_a_note(self):
         status, detail = run("Unactivated")["MDM (удалённое управление)"]

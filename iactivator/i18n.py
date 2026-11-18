@@ -448,6 +448,7 @@ EN: dict[str, str] = {
     "Вход Apple ID": "Apple ID sign-in",
     "Не удалось открыть браузер. Ссылка: {url}": "Could not open the browser. Link: {url}",
     "Устройство привязано к Apple ID. Снимается входом владельца: пароль Apple ID (кнопка ниже), или на самом iPhone «Разблокировать с помощью код-пароля?» и старый код-пароль устройства (iOS 15.2+), или отвязка на icloud.com/find": "This device is tied to an Apple ID. Clear it by the owner signing in: the Apple ID password (button below), or on the iPhone itself \"Unlock with Passcode?\" and the device's old passcode (iOS 15.2+), or remove it at icloud.com/find",
+    "На этой iOS статус Локатора до активации по USB не читается. Проверьте после активации на iPhone: Настройки → [имя] → Локатор": "On this iOS the Find My / Activation Lock status cannot be read over USB before activation. Check after activation on the iPhone: Settings → [name] → Find My",
 }
 
 # Russian source -> Ukrainian.
@@ -851,6 +852,7 @@ UK: dict[str, str] = {
     "Вход Apple ID": "Вхід Apple ID",
     "Не удалось открыть браузер. Ссылка: {url}": "Не вдалося відкрити браузер. Посилання: {url}",
     "Устройство привязано к Apple ID. Снимается входом владельца: пароль Apple ID (кнопка ниже), или на самом iPhone «Разблокировать с помощью код-пароля?» и старый код-пароль устройства (iOS 15.2+), или отвязка на icloud.com/find": "Пристрій прив'язаний до Apple ID. Знімається входом власника: пароль Apple ID (кнопка нижче), або на самому iPhone «Розблокувати за допомогою коду-пароля?» і старий код-пароль пристрою (iOS 15.2+), або відв'язка на icloud.com/find",
+    "На этой iOS статус Локатора до активации по USB не читается. Проверьте после активации на iPhone: Настройки → [имя] → Локатор": "На цій iOS статус Локатора до активації по USB не читається. Перевірте після активації на iPhone: Параметри → [ім'я] → Локатор",
 }
 
 

@@ -757,6 +757,12 @@ async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activati
                 results.append(_check("Локатор (блокировка активации)", "warn",
                                       "Нет связи с сервером Apple — проверьте интернет на компьютере: {e}",
                                       e=short_error(e)))
+            elif is_service_unavailable(e) or "no such value" in str(e).lower():
+                # New iOS (16+/27) does not expose the Activation-Lock status over USB before
+                # activation. That is expected, not a fault: a neutral note, not a warning.
+                results.append(_check("Локатор (блокировка активации)", "info",
+                                      "На этой iOS статус Локатора до активации по USB не читается. "
+                                      "Проверьте после активации на iPhone: Настройки → [имя] → Локатор"))
             else:
                 results.append(_check("Локатор (блокировка активации)", "warn",
                                       "iPhone не дал проверить ({e}). Проверьте после активации: "
