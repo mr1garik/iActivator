@@ -79,6 +79,7 @@ def load() -> dict:
     data["ui"].setdefault("lang", system_lang())
     data["ui"].setdefault("notify", True)
     data["ui"].setdefault("cleanup_days", 0)
+    data.setdefault("presets", {})
     return data
 
 
@@ -115,13 +116,43 @@ def delete_network(ssid: str) -> None:
         pass
 
 
+PRESET_KEYS = ("language", "region", "timezone", "h24", "activate", "skip_setup", "supervise",
+               "organization", "ssid", "auto")
+PRESET_MAX = 30
+NAME_MAX = 40
+
+
 def save_last(values: dict) -> None:
     """Remember non-secret form values (language, region, …) for the next launch."""
-    keep = ("language", "region", "timezone", "h24", "activate", "skip_setup", "supervise", "organization", "ssid", "auto")
     with _lock:
         data = load()
-        data["last"] = {k: values[k] for k in keep if k in values}
+        data["last"] = {k: values[k] for k in PRESET_KEYS if k in values}
         _save(data)
+
+
+def save_preset(name: str, values: dict) -> str | None:
+    """A named setup the user can apply with one click (language, region, Wi-Fi name, mode…).
+    No Wi-Fi password is stored here — the network keeps its own. Returns the saved name, or
+    None if the name is empty."""
+    name = (name or "").strip()[:NAME_MAX]
+    if not name:
+        return None
+    with _lock:
+        data = load()
+        data["presets"][name] = {k: values[k] for k in PRESET_KEYS if k in values}
+        # Keep the newest PRESET_MAX if somehow over the limit.
+        if len(data["presets"]) > PRESET_MAX:
+            for extra in list(data["presets"])[:-PRESET_MAX]:
+                del data["presets"][extra]
+        _save(data)
+    return name
+
+
+def delete_preset(name: str) -> None:
+    with _lock:
+        data = load()
+        if data["presets"].pop(name, None) is not None:
+            _save(data)
 
 
 def save_ui(values: dict) -> None:

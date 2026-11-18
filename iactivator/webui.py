@@ -601,6 +601,15 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/settings/last":
             settings.save_last(d)
             return self._send(200, {"ok": True})
+        if self.path == "/api/preset/save":
+            name = settings.save_preset(d.get("name", ""), d.get("values") or {})
+            if not name:
+                return self._send(200, {"error": t("Введите название профиля.")})
+            STATE.log(t("Профиль сохранён: {name}", name=name))
+            return self._send(200, {"ok": True, "presets": settings.load()["presets"]})
+        if self.path == "/api/preset/delete":
+            settings.delete_preset(d.get("name", ""))
+            return self._send(200, {"ok": True, "presets": settings.load()["presets"]})
 
         # Owner Apple ID sign-in for Activation Lock. The values (Apple ID, password, a 2FA code)
         # are forwarded straight to Apple and never logged or stored.

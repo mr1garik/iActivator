@@ -117,6 +117,7 @@
   .stat:hover { border-color:var(--brand); }
   .stat.on { border-color:var(--brand); box-shadow:0 0 0 1px var(--brand) inset; }
   .hist-filters { margin-top:8px; align-items:center; }
+  .presets-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .statsvg { width:100%; height:auto; stroke:none; fill:none; }
   .chart-legend { display:flex; gap:16px; margin-top:8px; font-size:12px; color:var(--muted); }
   .chart-legend span { display:flex; align-items:center; gap:6px; }
@@ -299,6 +300,14 @@
       <div id="info" class="info"></div>
       <div id="badges" class="badges"></div>
       <div id="driverHint" class="hint" style="display:none;margin:6px 0 0">iPhone не определяется? <a id="driverHintLink">Проверить драйвер Apple</a></div>
+    </div>
+
+    <div class="card presets-bar">
+      <span class="lbl" style="flex:none">Профиль</span>
+      <select id="presetSel" style="max-width:240px"><option value="">— выберите профиль —</option></select>
+      <button id="presetApply" title="Применить настройки профиля">Применить</button>
+      <button id="presetSave" title="Сохранить текущие настройки как профиль">Сохранить как…</button>
+      <button id="presetDel" class="ghost-danger" title="Удалить профиль">Удалить</button>
     </div>
 
     <div class="grid">
@@ -925,6 +934,17 @@ const T_EN = {
   "Синяя ночь": "Blue night",
   "Мятная": "Mint",
   "Графит": "Graphite",
+  "Профиль": "Profile",
+  "— выберите профиль —": "— choose a profile —",
+  "Применить": "Apply",
+  "Сохранить как…": "Save as…",
+  "Удалить": "Delete",
+  "Применить настройки профиля": "Apply the profile's settings",
+  "Сохранить текущие настройки как профиль": "Save the current settings as a profile",
+  "Удалить профиль": "Delete the profile",
+  "Профиль применён": "Profile applied",
+  "Название профиля (язык, регион, Wi-Fi, режим):": "Profile name (language, region, Wi-Fi, mode):",
+
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -1144,6 +1164,17 @@ const T_UK = {
   "Синяя ночь": "Синя ніч",
   "Мятная": "М'ятна",
   "Графит": "Графіт",
+  "Профиль": "Профіль",
+  "— выберите профиль —": "— виберіть профіль —",
+  "Применить": "Застосувати",
+  "Сохранить как…": "Зберегти як…",
+  "Удалить": "Видалити",
+  "Применить настройки профиля": "Застосувати налаштування профілю",
+  "Сохранить текущие настройки как профиль": "Зберегти поточні налаштування як профіль",
+  "Удалить профиль": "Видалити профіль",
+  "Профиль применён": "Профіль застосовано",
+  "Название профиля (язык, регион, Wi-Fi, режим):": "Назва профілю (мова, регіон, Wi-Fi, режим):",
+
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
 function cap(s) { return (LANG === "en" || LANG === "pl") && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
@@ -1224,6 +1255,17 @@ const T_PL = {
   "Доступна новая версия": "Dostępna nowa wersja",
   "Скачать и установить": "Pobierz i zainstaluj",
   "Скачать": "Pobierz",
+  "Профиль": "Profil",
+  "— выберите профиль —": "— wybierz profil —",
+  "Применить": "Zastosuj",
+  "Сохранить как…": "Zapisz jako…",
+  "Удалить": "Usuń",
+  "Применить настройки профиля": "Zastosuj ustawienia profilu",
+  "Сохранить текущие настройки как профиль": "Zapisz bieżące ustawienia jako profil",
+  "Удалить профиль": "Usuń profil",
+  "Профиль применён": "Profil zastosowany",
+  "Название профиля (язык, регион, Wi-Fi, режим):": "Nazwa profilu (język, region, Wi-Fi, tryb):",
+
 };
 const T_ES = {
   "Активация": "Activación",
@@ -1300,6 +1342,17 @@ const T_ES = {
   "Доступна новая версия": "Hay una versión nueva",
   "Скачать и установить": "Descargar e instalar",
   "Скачать": "Descargar",
+  "Профиль": "Perfil",
+  "— выберите профиль —": "— elige un perfil —",
+  "Применить": "Aplicar",
+  "Сохранить как…": "Guardar como…",
+  "Удалить": "Eliminar",
+  "Применить настройки профиля": "Aplicar los ajustes del perfil",
+  "Сохранить текущие настройки как профиль": "Guardar los ajustes actuales como perfil",
+  "Удалить профиль": "Eliminar el perfil",
+  "Профиль применён": "Perfil aplicado",
+  "Название профиля (язык, регион, Wi-Fi, режим):": "Nombre del perfil (idioma, región, Wi-Fi, modo):",
+
 };
 const T_DE = {
   "Активация": "Aktivierung",
@@ -1376,6 +1429,17 @@ const T_DE = {
   "Доступна новая версия": "Neue Version verfügbar",
   "Скачать и установить": "Herunterladen und installieren",
   "Скачать": "Herunterladen",
+  "Профиль": "Profil",
+  "— выберите профиль —": "— Profil wählen —",
+  "Применить": "Anwenden",
+  "Сохранить как…": "Speichern als…",
+  "Удалить": "Löschen",
+  "Применить настройки профиля": "Profileinstellungen anwenden",
+  "Сохранить текущие настройки как профиль": "Aktuelle Einstellungen als Profil speichern",
+  "Удалить профиль": "Profil löschen",
+  "Профиль применён": "Profil angewendet",
+  "Название профиля (язык, регион, Wi-Fi, режим):": "Profilname (Sprache, Region, WLAN, Modus):",
+
 };
 const T_DICTS = { en: T_EN, uk: T_UK, pl: T_PL, es: T_ES, de: T_DE };
 function T(s) { if (LANG === "ru" || s == null) return s; const d = T_DICTS[LANG]; return (d && d[s] != null ? d[s] : undefined) ?? T_EN[s] ?? s; }
@@ -1384,7 +1448,7 @@ function T(s) { if (LANG === "ru" || s == null) return s; const d = T_DICTS[LANG
 const I18N_SKIP = new Set(["log", "logEmpty", "info", "badges", "steps", "histBody", "histEmpty",
   "checkResults", "aboutInfo", "wallets", "previewList", "updateBanner", "transferResult", "updResult", "appleLoginForm",
   "status", "connText", "ver", "aboutVer", "netCount", "histCount", "device", "language", "region",
-  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage", "histShown", "lblPreview", "lblEditPreview", "lblEditLines", "statAct", "statCheck", "statChart"]);
+  "security", "saved", "quickNet", "driverStatus", "driverActions", "driverResult", "queueInfo", "filesUsage", "histShown", "lblPreview", "lblEditPreview", "lblEditLines", "statAct", "statCheck", "statChart", "presetSel"]);
 const _i18nText = new WeakMap(), _i18nAttr = new WeakMap();
 function _skip(el) { for (let n = el; n; n = n.parentElement) if (n.id && I18N_SKIP.has(n.id)) return true; return false; }
 function translateStatic() {
@@ -1754,8 +1818,13 @@ async function loadSettings(applyLast) {
   if (["ru", "en", "uk"].includes(s.ui.lang)) { LANG = s.ui.lang; try { localStorage.setItem("lang", LANG); } catch {} }
   networks = s.networks;
   fillNets();
+  fillPresets(s.presets);
   if (!applyLast) return;
-  const l = s.last;
+  await applyFormValues(s.last);
+}
+// Fill the form from a saved set of values (last used, or a preset).
+async function applyFormValues(l) {
+  if (!l) return;
   if (l.language) $("language").value = l.language;
   if (l.region) $("region").value = l.region;
   if (l.timezone) $("timezone").value = l.timezone;
@@ -1763,7 +1832,35 @@ async function loadSettings(applyLast) {
     if (key in l) $(id).checked = l[key];
   if (l.organization) org = l.organization;
   if (l.ssid && networks.some(n => n.ssid === l.ssid)) { $("saved").value = l.ssid; await pickNetwork(); }
+  else if (l.ssid === "") { $("saved").value = ""; await pickNetwork(); }
+  updateWifiHint();
 }
+let presets = {};
+function fillPresets(p) {
+  presets = p || {};
+  const names = Object.keys(presets);
+  fill($("presetSel"), [[T("— выберите профиль —"), ""], ...names.map(n => [n, n])], $("presetSel").value);
+  $("presetDel").disabled = $("presetApply").disabled = !$("presetSel").value;
+}
+$("presetSel").onchange = () => { $("presetDel").disabled = $("presetApply").disabled = !$("presetSel").value; };
+$("presetApply").onclick = async () => {
+  const p = presets[$("presetSel").value];
+  if (p) { await applyFormValues(p); rememberForm(); addLog(T("Профиль применён") + ": " + $("presetSel").value); }
+};
+$("presetSave").onclick = async () => {
+  const name = prompt(T("Название профиля (язык, регион, Wi-Fi, режим):"), $("presetSel").value || "");
+  if (name == null || !name.trim()) return;
+  const res = await api("/api/preset/save", { name: name.trim(), values: form() });
+  if (res.error) return alert(res.error);
+  fillPresets(res.presets); $("presetSel").value = name.trim();
+  $("presetDel").disabled = $("presetApply").disabled = false;
+};
+$("presetDel").onclick = async () => {
+  const name = $("presetSel").value;
+  if (!name || !confirm(`${T("Удалить профиль")} «${name}»?`)) return;
+  const res = await api("/api/preset/delete", { name });
+  fillPresets(res.presets); $("presetSel").value = "";
+};
 async function pickNetwork() {
   const n = networks.find(n => n.ssid === $("saved").value);
   if (!n) { $("ssid").value = ""; $("password").value = ""; fillNets(); return; }
