@@ -142,6 +142,9 @@
   .ev { display:grid; grid-template-columns:130px 14px 150px 1fr; gap:8px; padding:4px 0; align-items:start; }
   .ev .st { margin-top:6px; } .ev time { color:var(--muted); font-size:12px; } .ev small { color:var(--muted); }
   tr.events td { background:var(--field); border-top:0; padding:8px 16px; }
+  .bat-trend { display:flex; align-items:center; gap:10px; margin:2px 0 10px; }
+  .bat-trend svg { width:150px; height:34px; flex:none; stroke:none; fill:none; }
+  .bat-trend small { font-size:12px; }
   .note-line { margin-top:4px; font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
   .note-line::before { content:"✎ "; color:var(--muted); }
   .note-edit { display:grid; grid-template-columns:130px 1fr; gap:8px; align-items:start; margin:4px 0 10px; }
@@ -741,6 +744,7 @@ const T_EN = {
   "iActivator — открытая программа. Код, новые версии и отслеживание проблем на GitHub.": "iActivator is open source. The code, new versions and issue tracking are on GitHub.",
   "Репозиторий": "Repository", "Открыть репозиторий на GitHub": "Open the repository on GitHub",
   "Либо на самом iPhone нажмите «Разблокировать с помощью код-пароля?» и введите старый код-пароль устройства (iOS 15.2 и новее) — тогда Apple ID здесь не нужен.": "Or, on the iPhone itself, tap \u201cUnlock with Passcode?\u201d and enter the device's old passcode (iOS 15.2 or newer) \u2014 then no Apple ID is needed here.",
+  "Батарея": "Battery", "циклы": "cycles", "ёмкость снизилась": "capacity dropped",
   "Сохранить TXT": "Save TXT", "Заметка": "Note",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
@@ -962,6 +966,7 @@ const T_UK = {
   "iActivator — открытая программа. Код, новые версии и отслеживание проблем на GitHub.": "iActivator — відкрита програма. Код, нові версії та відстеження проблем на GitHub.",
   "Репозиторий": "Репозиторій", "Открыть репозиторий на GitHub": "Відкрити репозиторій на GitHub",
   "Либо на самом iPhone нажмите «Разблокировать с помощью код-пароля?» и введите старый код-пароль устройства (iOS 15.2 и новее) — тогда Apple ID здесь не нужен.": "Або на самому iPhone натисніть «Розблокувати за допомогою коду-пароля?» і введіть старий код-пароль пристрою (iOS 15.2 або новіша) — тоді Apple ID тут не потрібен.",
+  "Батарея": "Батарея", "циклы": "цикли", "ёмкость снизилась": "ємність знизилась",
   "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
@@ -1783,11 +1788,30 @@ function renderHistory() {
     if (openRow !== key) return row;
     const evs = [...d.events].reverse().map(e => `<div class="ev"><time>${esc(e.time)}</time>${dot(RES[e.result])}<b>${esc(T(e.action))}</b><small>${esc(T(e.detail || ""))}</small></div>`).join("");
     return row + `<tr class="events"><td colspan="4">
+      ${batteryTrend(d.battery_log)}
       <label class="note-edit"><span>${T("Заметка")}</span><textarea data-note="${esc(key)}" maxlength="1000" rows="2"
         placeholder="${T("Цена, клиент, дефекты… Видно в TXT, PDF и поиске")}">${esc(d.note || "")}</textarea><small class="empty" data-note-state></small></label>
       ${evs || `<span class="empty">${T("Событий нет")}</span>`}
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">${LABELS.enabled ? `<button data-label="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Наклейка")}</button>` : ""}<button data-txt="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Сохранить TXT")}</button><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
   }).join("");
+}
+// A small chart of how the battery's health (and cycles) changed across checks. A drop
+// between points usually means the battery was replaced or has worn.
+function batteryTrend(log) {
+  if (!Array.isArray(log) || log.length < 2) return "";
+  const hs = log.map(p => Math.min(p.h, 100)), w = 150, h = 34, n = log.length;
+  const x = i => (n === 1 ? 0 : (i / (n - 1)) * w);
+  const lo = Math.min(80, ...hs), y = v => h - ((v - lo) / (100 - lo || 1)) * h;
+  const line = hs.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  const first = log[0], lastp = log[n - 1];
+  const cyc = (first.c != null && lastp.c != null)
+    ? ` · ${T("циклы")} ${first.c}${lastp.c !== first.c ? " → " + lastp.c : ""}` : "";
+  const dropped = lastp.h < first.h - 1;
+  return `<div class="bat-trend">
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+      <path d="${line}" fill="none" stroke="${dropped ? "var(--danger)" : "var(--brand)"}" stroke-width="2"/></svg>
+    <small class="empty">${T("Батарея")}: ${first.h}%${lastp.h !== first.h ? " → " + lastp.h + "%" : ""}${cyc}
+      · ${first.t} → ${lastp.t}${dropped ? ` · ${T("ёмкость снизилась")}` : ""}</small></div>`;
 }
 $("histSearch").oninput = renderHistory;
 // Notes save on their own a moment after typing stops (and when leaving the field).

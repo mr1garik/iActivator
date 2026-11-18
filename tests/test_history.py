@@ -137,3 +137,39 @@ class ModelNames(unittest.TestCase):
         finally:
             history.json_path, history.csv_path = orig
             history._reset_cache()
+
+
+class BatteryLog(unittest.TestCase):
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self._orig = (history.json_path, history.csv_path)
+        history.json_path = lambda: self.dir / "history.json"
+        history.csv_path = lambda: self.dir / "history.csv"
+        history._reset_cache()
+        self.addCleanup(lambda: setattr(history, "json_path", self._orig[0]))
+        self.addCleanup(lambda: setattr(history, "csv_path", self._orig[1]))
+        self.addCleanup(history._reset_cache)
+
+    def dev(self):
+        return history.export()["U1"]
+
+    def test_records_changes_and_keeps_one_point_per_day(self):
+        history.update_device({"conn_id": "U1", "serial": "S", "battery": {"health": 100, "cycles": 50}})
+        history.update_device({"conn_id": "U1", "battery": {"health": 100, "cycles": 50}})  # same day, same -> no 2nd point
+        log = self.dev()["battery_log"]
+        self.assertEqual(len(log), 1)
+        self.assertEqual((log[0]["h"], log[0]["c"]), (100, 50))
+
+    def test_missing_health_adds_nothing(self):
+        history.update_device({"conn_id": "U1", "serial": "S", "battery": {}})
+        self.assertNotIn("battery_log", self.dev())
+
+    def test_log_is_capped(self):
+        history.update_device({"conn_id": "U1", "battery": {"health": 100, "cycles": 1}})
+        with history._lock:
+            d = history._load()["U1"]
+            d["battery_log"] = [{"t": f"2020-01-{i:02d}", "h": 90, "c": i} for i in range(1, 80)]
+            history._save(history._load())
+        history.update_device({"conn_id": "U1", "battery": {"health": 80, "cycles": 200}})
+        self.assertLessEqual(len(self.dev()["battery_log"]), history.MAX_BATTERY_LOG)
+        self.assertEqual(self.dev()["battery_log"][-1]["h"], 80)  # newest kept

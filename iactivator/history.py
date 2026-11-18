@@ -153,6 +153,25 @@ def _entry(data: dict, device_id: str) -> dict:
     return data.setdefault(device_id, {"id": device_id, "serial": "", "first_seen": _now(), "events": []})
 
 
+MAX_BATTERY_LOG = 60  # points kept per device (one per day); enough to see a trend
+
+
+def _record_battery(d: dict, health, cycles) -> None:
+    """Keep how the battery changed over time: one point per day (the latest that day),
+    and a new point only when health or cycles differ, so a replaced battery stands out."""
+    try:
+        entry = {"t": datetime.now().strftime("%Y-%m-%d"), "h": int(health),
+                 "c": int(cycles) if cycles is not None else None}
+    except (TypeError, ValueError):
+        return
+    log = d.setdefault("battery_log", [])
+    if log and log[-1]["t"] == entry["t"]:
+        log[-1] = entry
+    elif not log or log[-1]["h"] != entry["h"] or log[-1]["c"] != entry["c"]:
+        log.append(entry)
+    del log[:-MAX_BATTERY_LOG]
+
+
 def update_device(info: dict) -> None:
     """Store the latest known facts about a device (model, IMEI, battery…)."""
     device_id = info.get("conn_id") or info.get("serial")
@@ -169,6 +188,7 @@ def update_device(info: dict) -> None:
         b = info.get("battery") or {}
         if b.get("health") is not None:
             d["battery"] = b["health"]
+            _record_battery(d, b.get("health"), b.get("cycles"))
         d["activation"] = info.get("activation") or d.get("activation")
         d["last_seen"] = _now()
         _save(data)
