@@ -745,7 +745,9 @@ async def lock_checks(lockdown, own_cert: Optional[bytes] = None, check_activati
             locked = await _activation_lock_status(lockdown)
             if locked:
                 results.append(_check("Локатор (блокировка активации)", "bad",
-                                      "Устройство привязано к Apple ID. Нужен пароль владельца или отвязка на icloud.com/find"))
+                                      "Устройство привязано к Apple ID. Снимается входом владельца: пароль Apple ID "
+                                      "(кнопка ниже), или на самом iPhone «Разблокировать с помощью код-пароля?» "
+                                      "и старый код-пароль устройства (iOS 15.2+), или отвязка на icloud.com/find"))
             elif locked is False:
                 results.append(_check("Локатор (блокировка активации)", "ok", "Блокировки нет"))
             else:
