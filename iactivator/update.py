@@ -114,11 +114,23 @@ def status(force: bool = False) -> dict:
 
 
 def open_page() -> bool:
-    """Open the download page in the default browser."""
-    import webbrowser
+    """Open the download page in the default browser, through the OS (webbrowser.open is
+    unreliable in a packaged build)."""
     url = check().get("page") or RELEASES_PAGE
-    webbrowser.open(url)
-    return True
+    try:
+        if sys.platform == "win32":
+            os.startfile(url)  # noqa: S606
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", url])
+        else:
+            subprocess.Popen(["xdg-open", url])
+        return True
+    except Exception:
+        try:
+            import webbrowser
+            return bool(webbrowser.open(url))
+        except Exception:
+            return False
 
 
 # ---------------------------------------------------------------------------

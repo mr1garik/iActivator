@@ -441,6 +441,7 @@ EN: dict[str, str] = {
     "Вход владельца Apple ID": "Owner Apple ID sign-in",
     "✅ Блокировка активации снята входом владельца.": "✅ Activation Lock cleared by the owner's sign-in.",
     "Вход Apple ID": "Apple ID sign-in",
+    "Не удалось открыть браузер. Ссылка: {url}": "Could not open the browser. Link: {url}",
 }
 
 # Russian source -> Ukrainian.
@@ -842,4 +843,5 @@ UK: dict[str, str] = {
     "Вход владельца Apple ID": "Вхід власника Apple ID",
     "✅ Блокировка активации снята входом владельца.": "✅ Блокування активації знято входом власника.",
     "Вход Apple ID": "Вхід Apple ID",
+    "Не удалось открыть браузер. Ссылка: {url}": "Не вдалося відкрити браузер. Посилання: {url}",
 }

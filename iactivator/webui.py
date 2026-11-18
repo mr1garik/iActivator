@@ -83,6 +83,29 @@ def _size(n: int) -> str:
     return t("{n} МБ", n=f"{n / 1024 / 1024:.1f}")
 
 
+def open_url(url: str) -> bool:
+    """Open a link in the default browser through the OS, not Python's webbrowser.
+
+    In a packaged build (PyInstaller, and a macOS .app) webbrowser.open often does nothing:
+    the frozen app has no console and a minimal environment, so it finds no browser. The
+    system opener (`open`, `start`/os.startfile, `xdg-open`) always works. webbrowser stays
+    as a last resort."""
+    try:
+        if sys.platform == "win32":
+            import os
+            os.startfile(url)  # noqa: S606 - opens the default browser for an http(s) URL
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", url])
+        else:
+            subprocess.Popen(["xdg-open", url])
+        return True
+    except Exception:
+        try:
+            return bool(webbrowser.open(url))
+        except Exception:
+            return False
+
+
 def _open_folder(path: str) -> None:
     if sys.platform == "win32":
         import os
@@ -497,7 +520,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/open-url":
             url = d.get("url", "")
             if url in OPEN_URL_ALLOWED:
-                webbrowser.open(url)
+                if not open_url(url):
+                    return self._send(200, {"error": t("Не удалось открыть браузер. Ссылка: {url}", url=url), "url": url})
             return self._send(200, {"ok": True})
         if self.path == "/api/update/open":
             update.open_page()
@@ -977,7 +1001,7 @@ def main():
     # Fallback without pywebview: open the page in the default browser.
     print(f"iActivator открыт в браузере: {url}")
     print("Не закрывайте это окно, пока работаете с программой. Выход: Ctrl+C.")
-    threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+    threading.Timer(0.5, lambda: open_url(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
