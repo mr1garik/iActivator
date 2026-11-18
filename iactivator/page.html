@@ -121,6 +121,10 @@
   .chart-legend { display:flex; gap:16px; margin-top:8px; font-size:12px; color:var(--muted); }
   .chart-legend span { display:flex; align-items:center; gap:6px; }
   .chart-legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+  dl.keys { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:0; }
+  dl.keys dt { white-space:nowrap; } dl.keys dd { margin:0; color:var(--muted); }
+  kbd { font:inherit; font-size:12px; background:var(--field); border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; }
   .lbl-lines { display:grid; grid-template-columns:repeat(2, minmax(150px, 1fr)); gap:4px 16px; font-size:13px; }
   .lbl-lines label { display:flex; gap:6px; align-items:center; }
   .lbl-preview { display:flex; flex-direction:column; gap:4px; }
@@ -601,6 +605,17 @@
         <button id="repoLink" title="Открыть репозиторий на GitHub"><svg><use href="#i-code"/></svg>Репозиторий</button>
       </div>
     </div>
+    <div class="card">
+      <h2>Горячие клавиши</h2>
+      <dl class="keys">
+        <dt><kbd>Ctrl/⌘</kbd> + <kbd>Enter</kbd></dt><dd>Запустить активацию</dd>
+        <dt><kbd>Ctrl/⌘</kbd> + <kbd>D</kbd></dt><dd>Проверить на неисправности</dd>
+        <dt><kbd>F5</kbd></dt><dd>Обновить список устройств</dd>
+        <dt><kbd>Ctrl/⌘</kbd> + <kbd>U</kbd></dt><dd>Проверить обновление</dd>
+        <dt><kbd>Alt</kbd> + <kbd>1</kbd>…<kbd>8</kbd></dt><dd>Переход между разделами</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Закрыть окно</dd>
+      </dl>
+    </div>
     <p class="hint" style="margin-top:14px">Программа не обходит Блокировку активации: iPhone, привязанный к чужому Apple ID, нужно снять с аккаунта владельца.</p>
   </section>
 </main>
@@ -770,6 +785,7 @@ const T_EN = {
   "Либо на самом iPhone нажмите «Разблокировать с помощью код-пароля?» и введите старый код-пароль устройства (iOS 15.2 и новее) — тогда Apple ID здесь не нужен.": "Or, on the iPhone itself, tap \u201cUnlock with Passcode?\u201d and enter the device's old passcode (iOS 15.2 or newer) \u2014 then no Apple ID is needed here.",
   "Батарея": "Battery", "циклы": "cycles", "ёмкость снизилась": "capacity dropped",
   "Статистика": "Statistics", "Активации": "Activations", "Проверки": "Checks", "7 дней": "7 days", "30 дней": "30 days", "Активность за 30 дней": "Activity over 30 days", "Пока нет данных": "No data yet",
+  "Горячие клавиши": "Keyboard shortcuts", "Запустить активацию": "Run activation", "Проверить на неисправности": "Run the fault check", "Обновить список устройств": "Refresh the device list", "Проверить обновление": "Check for an update", "Переход между разделами": "Switch between sections", "Закрыть окно": "Close the dialog",
   "Сохранить TXT": "Save TXT", "Заметка": "Note",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Price, customer, defects… Shown in TXT, PDF and search", "Все в TXT": "All to TXT", "Очистить всё": "Clear all",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "A separate TXT file for each phone: details, parts and all events",
@@ -993,6 +1009,7 @@ const T_UK = {
   "Либо на самом iPhone нажмите «Разблокировать с помощью код-пароля?» и введите старый код-пароль устройства (iOS 15.2 и новее) — тогда Apple ID здесь не нужен.": "Або на самому iPhone натисніть «Розблокувати за допомогою коду-пароля?» і введіть старий код-пароль пристрою (iOS 15.2 або новіша) — тоді Apple ID тут не потрібен.",
   "Батарея": "Батарея", "циклы": "цикли", "ёмкость снизилась": "ємність знизилась",
   "Статистика": "Статистика", "Активации": "Активації", "Проверки": "Перевірки", "7 дней": "7 днів", "30 дней": "30 днів", "Активность за 30 дней": "Активність за 30 днів", "Пока нет данных": "Поки немає даних",
+  "Горячие клавиши": "Гарячі клавіші", "Запустить активацию": "Запустити активацію", "Проверить на неисправности": "Перевірити на несправності", "Обновить список устройств": "Оновити список пристроїв", "Проверить обновление": "Перевірити оновлення", "Переход между разделами": "Перехід між розділами", "Закрыть окно": "Закрити вікно",
   "Сохранить TXT": "Зберегти TXT", "Заметка": "Нотатка",
   "Цена, клиент, дефекты… Видно в TXT, PDF и поиске": "Ціна, клієнт, дефекти… Видно в TXT, PDF і пошуку", "Все в TXT": "Усі в TXT", "Очистить всё": "Очистити все",
   "По отдельному TXT-файлу на каждый телефон: данные, детали и все события": "Окремий TXT-файл на кожен телефон: дані, деталі та всі події",
@@ -2065,6 +2082,25 @@ $("refresh").onclick = () => pollDevices(true);
 $("device").onchange = () => { setConn($("device").selectedOptions[0]?.textContent); onDevice(false); };
 $("check").onclick = runCheck;
 $("start").onclick = start;
+
+// ---------- keyboard shortcuts ----------
+// Work anywhere; while typing in a field only the modifier combos and Escape fire.
+const NAV_ORDER = ["activate", "wifi", "check", "history", "log", "stats", "settings", "about"];
+document.addEventListener("keydown", e => {
+  const mod = e.ctrlKey || e.metaKey;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ""));
+  if (e.key === "Escape") {
+    const open = document.querySelector(".modal.on");
+    if (open) { const c = open.querySelector('[id$="Cancel"]'); c ? c.click() : open.classList.remove("on"); e.preventDefault(); }
+    return;
+  }
+  if (mod && e.key === "Enter") { e.preventDefault(); show("activate"); start(); return; }
+  if (mod && (e.key === "d" || e.key === "D")) { e.preventDefault(); show("check"); runCheck(); return; }
+  if (mod && (e.key === "u" || e.key === "U")) { e.preventDefault(); checkUpdate(true); return; }
+  if (e.key === "F5") { e.preventDefault(); pollDevices(true); return; }
+  if (e.altKey && e.key >= "1" && e.key <= "8") { e.preventDefault(); show(NAV_ORDER[+e.key - 1]); return; }
+  if (typing) return;  // plain keys below must not disturb typing
+});
 $("status").onclick = () => show("log");
 $("openData").onclick = () => api("/api/open-data", {});
 $("panicReader").onclick = () => api("/api/open-url", { url: "https://github.com/mr1garik/ios-panic-reader" });
