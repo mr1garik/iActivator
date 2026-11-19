@@ -23,24 +23,27 @@ from pathlib import Path
 from . import __version__, applog, autostart, core, devicetext, documents, driver, history, i18n, notify, report, settings, tray, update
 from .i18n import t
 
+# The iPhone's language and region. Shown the same in every program language: each language
+# by its own name (endonym), each region by its English name. So the lists need no translation
+# and a Pole looking for Polish sees "Polski".
 LANGUAGES = [
-    ("Украинский", "uk"), ("Русский", "ru"), ("Английский (США)", "en"), ("Английский (Великобритания)", "en-GB"),
-    ("Польский", "pl"), ("Немецкий", "de"), ("Французский", "fr"), ("Испанский", "es"), ("Итальянский", "it"),
-    ("Португальский (Бразилия)", "pt-BR"), ("Турецкий", "tr"), ("Румынский", "ro"), ("Чешский", "cs"),
-    ("Словацкий", "sk"), ("Венгерский", "hu"), ("Казахский", "kk"), ("Иврит", "he"), ("Арабский", "ar"),
-    ("Китайский (упрощ.)", "zh-Hans"), ("Китайский (традиц.)", "zh-Hant"), ("Японский", "ja"), ("Корейский", "ko"),
+    ("Українська", "uk"), ("Русский", "ru"), ("English (US)", "en"), ("English (UK)", "en-GB"),
+    ("Polski", "pl"), ("Deutsch", "de"), ("Français", "fr"), ("Español", "es"), ("Italiano", "it"),
+    ("Português (Brasil)", "pt-BR"), ("Türkçe", "tr"), ("Română", "ro"), ("Čeština", "cs"),
+    ("Slovenčina", "sk"), ("Magyar", "hu"), ("Қазақша", "kk"), ("עברית", "he"), ("العربية", "ar"),
+    ("中文 (简体)", "zh-Hans"), ("中文 (繁體)", "zh-Hant"), ("日本語", "ja"), ("한국어", "ko"),
 ]
 
 REGIONS = [
-    ("Украина", "UA", "Europe/Kyiv"), ("Польша", "PL", "Europe/Warsaw"),
-    ("Германия", "DE", "Europe/Berlin"), ("Чехия", "CZ", "Europe/Prague"),
-    ("Молдова", "MD", "Europe/Chisinau"), ("Румыния", "RO", "Europe/Bucharest"),
-    ("Казахстан", "KZ", "Asia/Almaty"), ("Грузия", "GE", "Asia/Tbilisi"),
-    ("Турция", "TR", "Europe/Istanbul"), ("Великобритания", "GB", "Europe/London"),
-    ("Франция", "FR", "Europe/Paris"), ("Италия", "IT", "Europe/Rome"),
-    ("Испания", "ES", "Europe/Madrid"), ("Израиль", "IL", "Asia/Jerusalem"),
-    ("ОАЭ", "AE", "Asia/Dubai"), ("США", "US", "America/New_York"),
-    ("Канада", "CA", "America/Toronto"), ("Китай", "CN", "Asia/Shanghai"),
+    ("Ukraine", "UA", "Europe/Kyiv"), ("Poland", "PL", "Europe/Warsaw"),
+    ("Germany", "DE", "Europe/Berlin"), ("Czechia", "CZ", "Europe/Prague"),
+    ("Moldova", "MD", "Europe/Chisinau"), ("Romania", "RO", "Europe/Bucharest"),
+    ("Kazakhstan", "KZ", "Asia/Almaty"), ("Georgia", "GE", "Asia/Tbilisi"),
+    ("Türkiye", "TR", "Europe/Istanbul"), ("United Kingdom", "GB", "Europe/London"),
+    ("France", "FR", "Europe/Paris"), ("Italy", "IT", "Europe/Rome"),
+    ("Spain", "ES", "Europe/Madrid"), ("Israel", "IL", "Asia/Jerusalem"),
+    ("UAE", "AE", "Asia/Dubai"), ("United States", "US", "America/New_York"),
+    ("Canada", "CA", "America/Toronto"), ("China", "CN", "Asia/Shanghai"),
 ]
 
 ACTIVATION = {"Activated": "активирован", "Unactivated": "не активирован"}
@@ -400,7 +403,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, PAGE, "text/html; charset=utf-8")
         if self.path == "/api/meta":
             return self._send(200, {
-                "languages": [[t(n), c] for n, c in LANGUAGES], "regions": [[t(n), c, tz] for n, c, tz in REGIONS],
+                "languages": [[n, c] for n, c in LANGUAGES], "regions": [[n, c, tz] for n, c, tz in REGIONS],
                 "security": [[t(k), v] for k, v in core.WIFI_SECURITY.items()],
                 "lang": i18n.get_lang(),
                 "about": _about(),
