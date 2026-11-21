@@ -205,10 +205,17 @@ class UpdateError(Exception):
 MIN_UPDATE_BYTES = 5 * 1024 * 1024
 
 
+# The whole download must finish within this time; otherwise it is treated as stuck and the
+# banner offers the download page instead of hanging forever.
+DOWNLOAD_DEADLINE_SECONDS = 600
+
+
 def _download(url: str) -> Path:
+    import time
     tmp = Path(tempfile.mkdtemp(prefix="iactivator-update-"))
     dest = tmp / _asset_name()
     req = urllib.request.Request(url, headers={"User-Agent": "iActivator"})
+    started = time.monotonic()
     with urllib.request.urlopen(req, timeout=60, context=_ssl_context()) as r, open(dest, "wb") as f:
         total = int(r.headers.get("Content-Length") or 0)
         got = 0
@@ -221,6 +228,8 @@ def _download(url: str) -> Path:
             if total:
                 with _lock:
                     _prog["pct"] = min(99, int(got * 100 / total))
+            if time.monotonic() - started > DOWNLOAD_DEADLINE_SECONDS:
+                raise UpdateError(t("Загрузка идёт слишком долго. Проверьте интернет или скачайте со страницы загрузки."))
     if total and got != total:
         raise UpdateError(t("Загрузка оборвалась ({got} из {total} байт). Повторите позже.", got=got, total=total))
     return dest

@@ -1005,6 +1005,7 @@ const T_EN = {
   "Создать PDF": "Create PDF",
 
   "Удаляются телефоны, которые давно не подключались, и старые TXT-файлы и PDF-отчёты. Проверка — при запуске программы и каждые 6 часов.": "Removes phones not connected for a long time, and old TXT files and PDF reports. Checked when the app starts and every 6 hours.",
+  "Установка не завершилась. Закройте программу и установите новую версию вручную со страницы загрузки.": "The installation did not finish. Close the app and install the new version by hand from the download page.",
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -1261,6 +1262,7 @@ const T_UK = {
   "Создать PDF": "Створити PDF",
 
   "Удаляются телефоны, которые давно не подключались, и старые TXT-файлы и PDF-отчёты. Проверка — при запуске программы и каждые 6 часов.": "Видаляються телефони, які давно не підключалися, і старі TXT-файли та PDF-звіти. Перевірка — під час запуску програми та кожні 6 годин.",
+  "Установка не завершилась. Закройте программу и установите новую версию вручную со страницы загрузки.": "Встановлення не завершилося. Закрийте програму та встановіть нову версію вручну зі сторінки завантаження.",
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
 function cap(s) { return (LANG === "en" || LANG === "pl") && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
@@ -2884,7 +2886,16 @@ async function pollUpdateProgress() {
   const btn = $("updInstall");
   if (p.error) return updateFailed(p.error);
   if (btn) btn.textContent = p.done ? T("Установка…") : `${T("Загрузка")}… ${p.pct || 0}%`;
-  if (p.done) return;              // the app will close and relaunch itself
+  if (p.done) {
+    // The installer runs and the app should close and relaunch itself. If it is still
+    // here after a while, the silent install stalled — give the user a way out instead
+    // of leaving the window stuck on "Installing…".
+    setTimeout(async () => {
+      try { await api("/api/update/progress"); } catch { return; }  // app gone = it worked
+      updateFailed(T("Установка не завершилась. Закройте программу и установите новую версию вручную со страницы загрузки."));
+    }, 25000);
+    return;
+  }
   if (p.active) setTimeout(pollUpdateProgress, 500);
 }
 // Whatever goes wrong with the automatic update, the user always gets a way to the

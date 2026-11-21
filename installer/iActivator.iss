@@ -38,7 +38,7 @@ SolidCompression=yes
 WizardStyle=modern
 ; The app is closed by the in-app updater before this runs; this covers a manual install
 ; while it is still open (it may sit in the tray).
-CloseApplications=yes
+CloseApplications=force
 RestartApplications=no
 
 [Languages]
