@@ -381,6 +381,8 @@ class Handler(BaseHTTPRequestHandler):
         self._safely(self._do_post)
 
     def _do_get(self):
+        if self.path == "/api/report":
+            return self._send(200, {"text": _report_text()})
         if self.path.startswith("/api/labels/preview"):
             # The sticker as it will print, with the saved settings: the latest phone in the
             # history, or a sample phone. Shown in Settings; nothing is saved.
@@ -522,6 +524,21 @@ class Handler(BaseHTTPRequestHandler):
             if action in ("restart", "reinstall"):
                 STATE.labels = {}  # re-read device names once the driver is back
             return self._send(200, res)
+        if self.path == "/api/report/github":
+            open_url(_github_issue_url(str(d.get("note") or "")))
+            return self._send(200, {"ok": True})
+        if self.path == "/api/report/save":
+            text = _report_text(str(d.get("note") or ""))
+            path = _save_path(t("iActivator-отчёт-{date}.txt", date=time.strftime("%Y-%m-%d_%H%M")))
+            if path is None:
+                return self._send(200, {"cancelled": True})
+            try:
+                path.write_text(text, encoding="utf-8")
+            except OSError as e:
+                return self._send(200, {"error": t("Не удалось сохранить файл: {e}", e=e)})
+            if WINDOW is None:
+                _open_folder(str(path.parent))
+            return self._send(200, {"path": str(path)})
         if self.path == "/api/open-url":
             url = d.get("url", "")
             if url in OPEN_URL_ALLOWED:
@@ -911,6 +928,37 @@ def _export_logs(with_history: bool, redact: bool = False) -> dict:
     if WINDOW is None:
         _open_folder(str(path.parent))
     return {"path": str(path)}
+
+
+def _report_text(user_note: str = "") -> str:
+    """A bug report with the version, the system and the recent journal, with serial numbers,
+    IMEIs, ICCIDs and UDIDs hidden. Safe to share."""
+    a = _about()
+    lines = [t("=== iActivator — сообщение об ошибке ==="),
+             t("Версия: {v}   Система: {sys}   Python: {py}   pymobiledevice3: {pmd}",
+               v=a["version"], sys=a["system"], py=a["python"], pmd=a["pymobiledevice3"]),
+             t("Номера устройств скрыты (***)."), ""]
+    if user_note.strip():
+        lines += [t("Что случилось:"), user_note.strip()[:4000], ""]
+    entries, _ = applog.since(0)
+    tail = entries[-300:]
+    lines.append(t("=== Журнал (последние {n} записей) ===", n=len(tail)))
+    for e in tail:
+        who = f" [{e.get('serial')}]" if e.get("serial") else ""
+        lines.append(f"{e.get('time','')}{who} {e.get('text','')}")
+    text = "\n".join(lines) + "\n"
+    return _redact_ids(text, _device_identifiers())
+
+
+def _github_issue_url(user_note: str) -> str:
+    import urllib.parse
+    a = _about()
+    title = f"iActivator {a['version']}: " + (user_note.strip().splitlines()[0][:60] if user_note.strip()
+                                              else t("сообщение об ошибке"))
+    body = (t("Опишите, что не работает, и приложите отчёт (кнопка «Скопировать отчёт» вставит его сюда).")
+            + f"\n\n```\n{t('Версия')}: {a['version']} · {a['system']} · pymobiledevice3 {a['pymobiledevice3']}\n```\n")
+    q = urllib.parse.urlencode({"title": title, "body": body})
+    return f"{REPO}/issues/new?{q}"
 
 
 def _free_port(preferred: int = 8765) -> int:

@@ -160,6 +160,8 @@
   .note-edit span { font-size:12px; color:var(--muted); padding-top:6px; }
   .note-edit textarea { width:100%; resize:vertical; font:inherit; font-size:13px; }
   .note-edit small { grid-column:2; font-size:11px; }
+  #bugReport textarea { width:100%; display:block; resize:vertical; font:inherit; }
+  #bugReport #bugOut { font-family:ui-monospace, monospace; margin-top:10px; }
   @media (max-width: 860px) { .stats { grid-template-columns:1fr 1fr; } .ev { grid-template-columns:1fr; } .le { grid-template-columns:56px 10px 1fr; } .le .sn { display:none; } }
   #log { font:11.5px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; max-height:calc(100vh - 220px); overflow:auto; margin:0; }
   .le { display:grid; grid-template-columns:62px 10px 104px 1fr; gap:8px; padding:2px 0; align-items:start; }
@@ -612,6 +614,10 @@
         <span>Новости, вопросы и предложения — в Instagram</span>
         <button id="insta"><svg><use href="#i-insta"/></svg>Instagram</button>
       </div>
+      <div class="row" style="justify-content:space-between">
+        <span>Что-то не работает? Отправьте отчёт — номера устройств скрыты</span>
+        <button id="reportBug"><svg><use href="#i-alert"/></svg>Сообщить об ошибке</button>
+      </div>
       <div id="wallets"></div>
     </div>
     <div class="card">
@@ -669,6 +675,22 @@
     <div class="foot">
       <button id="docCancel">Отмена</button>
       <button class="primary" id="docCreate"><svg><use href="#i-file"/></svg>Создать PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="bugReport">
+  <div class="box" style="max-width:480px">
+    <h3>Сообщить об ошибке</h3>
+    <p class="sub">Опишите, что не работает. В отчёт войдут версия, система и журнал — серийные номера, IMEI и UDID скрыты.</p>
+    <textarea id="bugNote" rows="3" maxlength="4000" placeholder="Например: при обновлении зависло на «Установка…»"></textarea>
+    <textarea id="bugOut" rows="5" readonly style="display:none;font-size:12px"></textarea>
+    <p class="hint" id="bugState" style="display:none"></p>
+    <div class="foot" style="flex-wrap:wrap">
+      <button id="bugCancel">Отмена</button>
+      <button id="bugCopy"><svg><use href="#i-copy"/></svg>Скопировать отчёт</button>
+      <button id="bugSave"><svg><use href="#i-file"/></svg>Сохранить в файл</button>
+      <button class="primary" id="bugGithub"><svg><use href="#i-code"/></svg>Открыть на GitHub</button>
     </div>
   </div>
 </div>
@@ -1006,6 +1028,20 @@ const T_EN = {
 
   "Удаляются телефоны, которые давно не подключались, и старые TXT-файлы и PDF-отчёты. Проверка — при запуске программы и каждые 6 часов.": "Removes phones not connected for a long time, and old TXT files and PDF reports. Checked when the app starts and every 6 hours.",
   "Установка не завершилась. Закройте программу и установите новую версию вручную со страницы загрузки.": "The installation did not finish. Close the app and install the new version by hand from the download page.",
+  "Что-то не работает? Отправьте отчёт — номера устройств скрыты": "Something not working? Send a report — device numbers are hidden",
+  "Сообщить об ошибке": "Report a problem",
+  "Опишите, что не работает. В отчёт войдут версия, система и журнал — серийные номера, IMEI и UDID скрыты.": "Describe what is not working. The report includes the version, the system and the journal — serial numbers, IMEI and UDID are hidden.",
+  "Например: при обновлении зависло на «Установка…»": "E.g. the update got stuck on “Installing…”",
+  "Скопировать отчёт": "Copy the report",
+  "Сохранить в файл": "Save to file",
+  "Открыть на GitHub": "Open on GitHub",
+  "Отчёт скопирован — вставьте его в сообщение.": "The report is copied — paste it into your message.",
+  "Не удалось скопировать. Сохраните в файл.": "Couldn't copy. Save to a file instead.",
+  "Открыл GitHub. Отчёт уже скопирован — вставьте его в обращение (Ctrl+V).": "Opened GitHub. The report is already copied — paste it into the issue (Ctrl+V).",
+
+  "Выделите текст выше и скопируйте вручную (Ctrl+C).": "Select the text above and copy it by hand (Ctrl+C).",
+  "Открыл GitHub. Скопируйте отчёт выше и вставьте в обращение.": "Opened GitHub. Copy the report above and paste it into the issue.",
+
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -1263,6 +1299,20 @@ const T_UK = {
 
   "Удаляются телефоны, которые давно не подключались, и старые TXT-файлы и PDF-отчёты. Проверка — при запуске программы и каждые 6 часов.": "Видаляються телефони, які давно не підключалися, і старі TXT-файли та PDF-звіти. Перевірка — під час запуску програми та кожні 6 годин.",
   "Установка не завершилась. Закройте программу и установите новую версию вручную со страницы загрузки.": "Встановлення не завершилося. Закрийте програму та встановіть нову версію вручну зі сторінки завантаження.",
+  "Что-то не работает? Отправьте отчёт — номера устройств скрыты": "Щось не працює? Надішліть звіт — номери пристроїв приховані",
+  "Сообщить об ошибке": "Повідомити про помилку",
+  "Опишите, что не работает. В отчёт войдут версия, система и журнал — серийные номера, IMEI и UDID скрыты.": "Опишіть, що не працює. У звіт увійдуть версія, система та журнал — серійні номери, IMEI та UDID приховані.",
+  "Например: при обновлении зависло на «Установка…»": "Наприклад: під час оновлення зависло на «Встановлення…»",
+  "Скопировать отчёт": "Скопіювати звіт",
+  "Сохранить в файл": "Зберегти у файл",
+  "Открыть на GitHub": "Відкрити на GitHub",
+  "Отчёт скопирован — вставьте его в сообщение.": "Звіт скопійовано — вставте його у повідомлення.",
+  "Не удалось скопировать. Сохраните в файл.": "Не вдалося скопіювати. Збережіть у файл.",
+  "Открыл GitHub. Отчёт уже скопирован — вставьте его в обращение (Ctrl+V).": "Відкрив GitHub. Звіт уже скопійовано — вставте його у звернення (Ctrl+V).",
+
+  "Выделите текст выше и скопируйте вручную (Ctrl+C).": "Виділіть текст вище та скопіюйте вручну (Ctrl+C).",
+  "Открыл GitHub. Скопируйте отчёт выше и вставьте в обращение.": "Відкрив GitHub. Скопіюйте звіт вище та вставте у звернення.",
+
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
 function cap(s) { return (LANG === "en" || LANG === "pl") && s ? String(s).replace("ГБ", "GB").replace("ТБ", "TB") : s; }
@@ -2488,6 +2538,40 @@ $("docCreate").onclick = async () => {
     if (res.error) { $("docErr").textContent = res.error; $("docErr").style.display = ""; return; }
     $("docDialog").classList.remove("on"); docId = null; loadFilesUsage();
   } finally { btn.disabled = false; }
+};
+
+
+// ---------- report a problem ----------
+$("reportBug").onclick = () => { $("bugNote").value = ""; $("bugOut").style.display = "none"; $("bugState").style.display = "none"; $("bugReport").classList.add("on"); $("bugNote").focus(); };
+$("bugCancel").onclick = () => $("bugReport").classList.remove("on");
+async function bugReportText() {
+  const r = await api("/api/report");
+  const note = $("bugNote").value.trim();
+  return (note ? note + "\n\n" : "") + (r.text || "");
+}
+function bugSay(msg) { $("bugState").textContent = msg; $("bugState").style.display = ""; }
+// Copy works even without the clipboard API (the app runs over http, where some webviews
+// block it): fall back to execCommand, and always show the report so it can be copied by hand.
+async function bugCopy(text) {
+  const out = $("bugOut"); out.value = text; out.style.display = ""; out.focus(); out.select();
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  try { if (document.execCommand("copy")) return true; } catch {}
+  return false;
+}
+$("bugCopy").onclick = async () => {
+  const ok = await bugCopy(await bugReportText());
+  bugSay(ok ? T("Отчёт скопирован — вставьте его в сообщение.") : T("Выделите текст выше и скопируйте вручную (Ctrl+C)."));
+};
+$("bugSave").onclick = async () => {
+  const res = await api("/api/report/save", { note: $("bugNote").value });
+  if (res && res.error) return bugSay(res.error);
+  if (res && res.path) bugSay(T("Сохранено") + ": " + res.path);
+};
+$("bugGithub").onclick = async () => {
+  const ok = await bugCopy(await bugReportText());
+  await api("/api/report/github", { note: $("bugNote").value });
+  bugSay(ok ? T("Открыл GitHub. Отчёт уже скопирован — вставьте его в обращение (Ctrl+V).")
+            : T("Открыл GitHub. Скопируйте отчёт выше и вставьте в обращение."));
 };
 
 // ---------- statistics ----------

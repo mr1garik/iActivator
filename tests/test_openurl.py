@@ -49,3 +49,19 @@ class OpenUrl(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReportRedaction(unittest.TestCase):
+    def test_numbers_are_hidden_in_the_report(self):
+        text = webui._redact_ids(
+            "IMEI 356789012345678 serial F2LXK0ABCD12 ICCID 8938001234567891234",
+            {"F2LXK0ABCD12"})
+        self.assertNotIn("356789012345678", text)
+        self.assertNotIn("F2LXK0ABCD12", text)
+        self.assertNotIn("8938001234567891234", text)
+        self.assertIn("***", text)
+
+    def test_github_issue_url_points_at_the_repo_new_issue(self):
+        url = webui._github_issue_url("update stuck")
+        self.assertTrue(url.startswith(webui.REPO + "/issues/new?"))
+        self.assertIn("title=", url)
