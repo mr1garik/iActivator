@@ -343,16 +343,23 @@ def _install_macos(zip_path: Path) -> None:
 _SETUP_ARGS = ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LOG"]
 
 
-def windows_update_command(setup: Path, pid: int) -> list[str]:
-    path = "'" + str(setup).replace("'", "''") + "'"
-    args = ",".join(f"'{a}'" for a in _SETUP_ARGS)
-    script = (f"Wait-Process -Id {pid} -Timeout 60 -ErrorAction SilentlyContinue; "
-              f"Start-Process -FilePath {path} -ArgumentList {args}")
-    encoded = base64.b64encode(script.encode("utf-16-le")).decode()
-    return ["powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", encoded]
+def windows_update_command(setup: Path) -> list[str]:
+    """Run the installer itself — no PowerShell. The installer closes the running app
+    (CloseApplications=force in installer/iActivator.iss), replaces the files, keeps the
+    data folder and shortcuts, and starts the app again ([Run]). Launching it directly,
+    instead of through PowerShell, removes a step that antivirus or an execution policy
+    could block or slow down. The path is passed as a separate argument, so spaces or a
+    Cyrillic user name cannot break it."""
+    return [str(setup), *_SETUP_ARGS]
 
 
 def _install_windows(setup_path: Path) -> None:
     applog.add(t("Обновление установится и программа откроется снова через несколько секунд."))
-    flags = 0x08000000 | 0x00000200  # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP: outlives this process
-    subprocess.Popen(windows_update_command(setup_path, os.getpid()), creationflags=flags, close_fds=True)
+    # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB: the installer
+    # keeps running after this app quits a moment later (so the files are free immediately).
+    flags = 0x08000000 | 0x00000200 | 0x01000000
+    try:
+        subprocess.Popen(windows_update_command(setup_path), creationflags=flags, close_fds=True)
+    except OSError:
+        flags = 0x08000000 | 0x00000200  # some systems refuse BREAKAWAY_FROM_JOB
+        subprocess.Popen(windows_update_command(setup_path), creationflags=flags, close_fds=True)

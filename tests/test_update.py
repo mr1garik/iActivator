@@ -89,16 +89,13 @@ class VerifyDownload(unittest.TestCase):
 
 
 class WindowsUpdate(unittest.TestCase):
-    def test_silent_installer_runs_after_the_app_exits(self):
+    def test_installer_is_launched_directly_with_the_silent_flags(self):
         setup = Path("C:/Users/Ігор O'Neil/AppData/Local/Temp/iactivator-update-x/iActivator-windows-setup.exe")
-        cmd = update.windows_update_command(setup, 4242)
-        self.assertEqual(cmd[0], "powershell")
-        script = base64.b64decode(cmd[-1]).decode("utf-16-le")
-        self.assertIn("Wait-Process -Id 4242", script)
-        self.assertIn("'C:\\Users\\Ігор O''Neil\\AppData\\Local\\Temp\\iactivator-update-x\\iActivator-windows-setup.exe'"
-                      if os.sep == "\\" else "Ігор O''Neil", script)
-        for arg in ("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"):
-            self.assertIn(f"'{arg}'", script)
+        cmd = update.windows_update_command(setup)
+        self.assertNotIn("powershell", cmd[0].lower())   # no PowerShell step to block or slow
+        self.assertEqual(cmd[0], str(setup))             # the installer is run directly
+        self.assertEqual(cmd[1:], ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LOG"])
+        self.assertIn("Ігор O'Neil", cmd[0])             # the Cyrillic path is passed as one argument, unquoted
 
     def test_installed_or_portable(self):
         d = Path(tempfile.mkdtemp())
