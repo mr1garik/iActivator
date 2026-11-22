@@ -154,6 +154,12 @@
   .bat-trend { display:flex; align-items:center; gap:10px; margin:2px 0 10px; }
   .bat-trend svg { width:150px; height:34px; flex:none; stroke:none; fill:none; }
   .bat-trend small { font-size:12px; }
+  .wallet { display:flex; gap:12px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
+  .wallet:first-of-type { border-top:0; }
+  .wallet .qr { width:92px; height:92px; flex:none; stroke:none; border:1px solid var(--line); border-radius:6px; background:#fff; padding:4px; }
+  .wallet-info { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .wallet-info code { word-break:break-all; font-size:12px; }
+  .wallet-info button { align-self:flex-start; }
   .note-line { margin-top:4px; font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
   .note-line::before { content:"✎ "; color:var(--muted); }
   .note-edit { display:grid; grid-template-columns:130px 1fr; gap:8px; align-items:start; margin:4px 0 10px; }
@@ -1042,6 +1048,8 @@ const T_EN = {
   "Выделите текст выше и скопируйте вручную (Ctrl+C).": "Select the text above and copy it by hand (Ctrl+C).",
   "Открыл GitHub. Скопируйте отчёт выше и вставьте в обращение.": "Opened GitHub. Copy the report above and paste it into the issue.",
 
+  "Отсканируйте код кошельком или скопируйте адрес.": "Scan the code with your wallet or copy the address.",
+
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -1312,6 +1320,8 @@ const T_UK = {
 
   "Выделите текст выше и скопируйте вручную (Ctrl+C).": "Виділіть текст вище та скопіюйте вручну (Ctrl+C).",
   "Открыл GitHub. Скопируйте отчёт выше и вставьте в обращение.": "Відкрив GitHub. Скопіюйте звіт вище та вставте у звернення.",
+
+  "Отсканируйте код кошельком или скопируйте адрес.": "Відскануйте код гаманцем або скопіюйте адресу.",
 
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
@@ -3258,6 +3268,14 @@ function renderHistory() {
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">${LABELS.enabled ? `<button data-label="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Наклейка")}</button>` : ""}<button data-doc="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Документ")}</button><button data-txt="${esc(key)}"><svg><use href="#i-file"/></svg>${T("Сохранить TXT")}</button><button class="ghost-danger" data-del="${esc(key)}">${T("Удалить из истории")}</button></div></td></tr>`;
   }).join("");
 }
+// A QR code drawn from a matrix of "0101" rows (black modules), with a white quiet zone.
+function qrSvg(rows) {
+  if (!Array.isArray(rows) || !rows.length) return "";
+  const n = rows.length, q = 2, side = n + q * 2;
+  let r = "";
+  rows.forEach((row, y) => { for (let x = 0; x < n; x++) if (row[x] === "1") r += `<rect x="${x + q}" y="${y + q}" width="1.02" height="1.02"/>`; });
+  return `<svg class="qr" viewBox="0 0 ${side} ${side}"><rect width="${side}" height="${side}" fill="#fff"/><g fill="#000">${r}</g></svg>`;
+}
 // A small chart of how the battery's health (and cycles) changed across checks. A drop
 // between points usually means the battery was replaced or has worn.
 function batteryTrend(log) {
@@ -3385,9 +3403,10 @@ $("importFile").onchange = async () => {
 // ---------- support ----------
 function showSupport(a) {
   $("insta").onclick = () => api("/api/open-url", { url: a.instagram });
-  $("wallets").innerHTML = a.wallets.length ? `<p class="hint">${T("Поддержать проект криптовалютой:")}</p>` + a.wallets.map(([name, addr], i) =>
-    `<div class="wallet"><b>${esc(name)}</b><code title="${esc(addr)}">${esc(addr)}</code>
-     <button class="icon" data-wallet="${i}" title="${T("Скопировать адрес")}"><svg><use href="#i-copy"/></svg></button></div>`).join("") : "";
+  $("wallets").innerHTML = a.wallets.length ? `<p class="hint">${T("Поддержать проект криптовалютой:")}</p>` + a.wallets.map(([name, addr, qr], i) =>
+    `<div class="wallet">${qrSvg(qr)}<div class="wallet-info"><b>${esc(name)}</b><code title="${esc(addr)}">${esc(addr)}</code>
+     <button data-wallet="${i}"><svg><use href="#i-copy"/></svg>${T("Скопировать адрес")}</button></div></div>`).join("")
+    + `<p class="hint">${T("Отсканируйте код кошельком или скопируйте адрес.")}</p>` : "";
   $("wallets").onclick = e => {
     const b = e.target.closest("[data-wallet]");
     if (b) copyText(a.wallets[b.dataset.wallet][1], `${T("Адрес")} ${a.wallets[b.dataset.wallet][0]} ${T("скопирован")}`);

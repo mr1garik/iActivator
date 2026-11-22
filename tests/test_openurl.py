@@ -65,3 +65,13 @@ class ReportRedaction(unittest.TestCase):
         url = webui._github_issue_url("update stuck")
         self.assertTrue(url.startswith(webui.REPO + "/issues/new?"))
         self.assertIn("title=", url)
+
+
+class WalletQR(unittest.TestCase):
+    def test_each_wallet_has_a_qr_matrix(self):
+        rows = webui._wallets_with_qr()
+        self.assertTrue(rows)
+        for name, addr, qr in rows:
+            self.assertTrue(name and addr)
+            self.assertTrue(qr and all(set(r) <= {"0", "1"} for r in qr))  # square matrix of modules
+            self.assertEqual(len(qr), len(qr[0]))

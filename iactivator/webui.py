@@ -59,6 +59,26 @@ WALLETS: list[tuple[str, str]] = [("USDT (TRC20)", "TQKtZpsdz7pm9cuXWPE3ZQEboPHv
 PAGE = (Path(__file__).parent / "page.html").read_text(encoding="utf-8")
 
 
+_wallet_qr_cache: dict = {}
+
+
+def _wallets_with_qr() -> list:
+    """Each wallet as [name, address, qr_rows] where qr_rows is the QR matrix ('0101' strings)
+    so the About page can draw a scannable code. Built once and cached."""
+    out = []
+    for name, addr in WALLETS:
+        rows = _wallet_qr_cache.get(addr)
+        if rows is None:
+            try:
+                import segno
+                rows = ["".join("1" if c else "0" for c in row) for row in segno.make(addr, error="m").matrix]
+            except Exception:
+                rows = []
+            _wallet_qr_cache[addr] = rows
+        out.append([name, addr, rows])
+    return out
+
+
 def _about() -> dict:
     try:
         from importlib.metadata import version
@@ -73,7 +93,7 @@ def _about() -> dict:
         "data_dir": str(core.app_data_dir()),
         "instagram": INSTAGRAM,
         "repo": REPO,
-        "wallets": WALLETS,
+        "wallets": _wallets_with_qr(),
         "autostart_supported": autostart.supported(),
         "driver_supported": driver.supported(),
         "autostart": autostart.is_enabled(),
