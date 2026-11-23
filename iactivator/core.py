@@ -248,7 +248,7 @@ async def list_devices() -> list[DeviceInfo]:
                 activation_state=v.get("ActivationState", "?"),
             ))
             await lockdown.close()
-        except Exception as e:  # device busy / not trusted yet
+        except Exception:  # device busy / not trusted yet
             result.append(DeviceInfo(dev.serial, "Устройство", "?", "?", "нет доступа — разблокируйте iPhone"))
     return result
 

@@ -2552,12 +2552,13 @@ $("docCreate").onclick = async () => {
 
 
 // ---------- report a problem ----------
-$("reportBug").onclick = () => { $("bugNote").value = ""; $("bugOut").style.display = "none"; $("bugState").style.display = "none"; $("bugReport").classList.add("on"); $("bugNote").focus(); };
+let bugReportCache = null;
+$("reportBug").onclick = () => { bugReportCache = null; $("bugNote").value = ""; $("bugOut").style.display = "none"; $("bugState").style.display = "none"; $("bugReport").classList.add("on"); $("bugNote").focus(); };
 $("bugCancel").onclick = () => $("bugReport").classList.remove("on");
 async function bugReportText() {
-  const r = await api("/api/report");
+  if (bugReportCache == null) bugReportCache = (await api("/api/report")).text || "";
   const note = $("bugNote").value.trim();
-  return (note ? note + "\n\n" : "") + (r.text || "");
+  return (note ? note + "\n\n" : "") + bugReportCache;
 }
 function bugSay(msg) { $("bugState").textContent = msg; $("bugState").style.display = ""; }
 // Copy works even without the clipboard API (the app runs over http, where some webviews
@@ -2981,13 +2982,17 @@ async function pollUpdateProgress() {
   if (p.error) return updateFailed(p.error);
   if (btn) btn.textContent = p.done ? T("Установка…") : `${T("Загрузка")}… ${p.pct || 0}%`;
   if (p.done) {
-    // The installer runs and the app should close and relaunch itself. If it is still
-    // here after a while, the silent install stalled — give the user a way out instead
-    // of leaving the window stuck on "Installing…".
-    setTimeout(async () => {
+    // The installer runs and the app should close and relaunch itself. Keep checking: the
+    // moment the app is gone (api() fails) the update worked and we stop quietly. Only if
+    // the app is still answering after a while did the silent install truly stall — then
+    // give the user a way out instead of leaving the window stuck on "Installing…".
+    let left = 12;  // ~60s of 5s checks, so a slow-but-working install is not called a failure
+    const watch = async () => {
       try { await api("/api/update/progress"); } catch { return; }  // app gone = it worked
-      updateFailed(T("Установка не завершилась. Закройте программу и установите новую версию вручную со страницы загрузки."));
-    }, 25000);
+      if (--left <= 0) updateFailed(T("Установка не завершилась. Закройте программу и установите новую версию вручную со страницы загрузки."));
+      else setTimeout(watch, 5000);
+    };
+    setTimeout(watch, 5000);
     return;
   }
   if (p.active) setTimeout(pollUpdateProgress, 500);
