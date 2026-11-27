@@ -167,6 +167,13 @@
   .note-edit textarea { width:100%; resize:vertical; font:inherit; font-size:13px; }
   .note-edit small { grid-column:2; font-size:11px; }
   #bugReport textarea { width:100%; display:block; resize:vertical; font:inherit; }
+  .err-toast { position:fixed; left:50%; bottom:76px; transform:translateX(-50%); z-index:60; max-width:560px;
+               display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--card);
+               border:1px solid var(--danger); border-radius:12px; box-shadow:0 8px 28px #0000003a; }
+  .err-toast svg { color:var(--danger); flex:none; }
+  .err-toast span { flex:1; font-size:13px; max-height:40px; overflow:hidden; }
+  .err-toast button { flex:none; }
+  .err-toast #errToastSend { background:var(--danger); color:#fff; border-color:transparent; }
   #bugReport #bugOut { font-family:ui-monospace, monospace; margin-top:10px; }
   @media (max-width: 860px) { .stats { grid-template-columns:1fr 1fr; } .ev { grid-template-columns:1fr; } .le { grid-template-columns:56px 10px 1fr; } .le .sn { display:none; } }
   #log { font:11.5px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; max-height:calc(100vh - 220px); overflow:auto; margin:0; }
@@ -685,6 +692,13 @@
   </div>
 </div>
 
+<div id="errToast" class="err-toast" style="display:none">
+  <svg><use href="#i-alert"/></svg>
+  <span id="errToastText"></span>
+  <button id="errToastSend">Сообщить</button>
+  <button id="errToastClose" class="icon" title="Закрыть">✕</button>
+</div>
+
 <div class="modal" id="bugReport">
   <div class="box" style="max-width:480px">
     <h3>Сообщить об ошибке</h3>
@@ -1050,6 +1064,9 @@ const T_EN = {
 
   "Отсканируйте код кошельком или скопируйте адрес.": "Scan the code with your wallet or copy the address.",
 
+  "Сообщить": "Report",
+  "Закрыть": "Close",
+
 };
 const T_UK = {
   "Активация": "Активація", "Диагностика": "Діагностика", "История": "Історія",
@@ -1322,6 +1339,9 @@ const T_UK = {
   "Открыл GitHub. Скопируйте отчёт выше и вставьте в обращение.": "Відкрив GitHub. Скопіюйте звіт вище та вставте у звернення.",
 
   "Отсканируйте код кошельком или скопируйте адрес.": "Відскануйте код гаманцем або скопіюйте адресу.",
+
+  "Сообщить": "Повідомити",
+  "Закрыть": "Закрити",
 
 };
 // Sizes stored by an earlier (Russian) run: show them in the current language.
@@ -2553,7 +2573,24 @@ $("docCreate").onclick = async () => {
 
 // ---------- report a problem ----------
 let bugReportCache = null;
-$("reportBug").onclick = () => { bugReportCache = null; $("bugNote").value = ""; $("bugOut").style.display = "none"; $("bugState").style.display = "none"; $("bugReport").classList.add("on"); $("bugNote").focus(); };
+function openBugReport(prefill) {
+  bugReportCache = null; $("bugNote").value = prefill || ""; $("bugOut").style.display = "none";
+  $("bugState").style.display = "none"; $("bugReport").classList.add("on"); $("bugNote").focus();
+}
+$("reportBug").onclick = () => openBugReport("");
+// Error toast: the program surfaces any error and offers to send a report, so the user does
+// not have to find the button. Shown for the latest error; dismissible; opens the report
+// prefilled with the error text.
+let lastErrText = "";
+function showErrorToast(text) {
+  lastErrText = text;
+  $("errToastText").textContent = text.length > 160 ? text.slice(0, 160) + "…" : text;
+  $("errToast").style.display = "";
+}
+$("errToastClose").onclick = () => $("errToast").style.display = "none";
+$("errToastSend").onclick = () => { $("errToast").style.display = "none"; openBugReport(lastErrText); };
+window.addEventListener("error", e => { try { addLog("❌ UI: " + (e.message || e.error), "error"); } catch {} });
+window.addEventListener("unhandledrejection", e => { try { addLog("❌ UI: " + (e.reason && e.reason.message || e.reason), "error"); } catch {} });
 $("bugCancel").onclick = () => $("bugReport").classList.remove("on");
 async function bugReportText() {
   if (bugReportCache == null) bugReportCache = (await api("/api/report")).text || "";
@@ -3363,6 +3400,8 @@ async function pollLog() {
       else renderLog(res.entries);
       const last = res.entries.filter(e => e.level !== "debug").pop();
       if (last) $("status").textContent = last.text;
+      const err = res.entries.filter(e => e.level === "error").pop();
+      if (err) showErrorToast(err.text);
     }
     logNext = res.next;
     renderSteps(res.steps);
