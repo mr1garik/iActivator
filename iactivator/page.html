@@ -6,23 +6,29 @@
 <title>iActivator</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2084%2084%22%3E%3Crect%20x%3D%22.5%22%20y%3D%22.5%22%20width%3D%2283%22%20height%3D%2283%22%20rx%3D%2220%22%20fill%3D%22%23F6F6F3%22%20stroke%3D%22%23E2E2DC%22/%3E%3Crect%20x%3D%2227%22%20y%3D%2210%22%20width%3D%2230%22%20height%3D%2250%22%20rx%3D%228%22%20fill%3D%22%232E3035%22/%3E%3Crect%20x%3D%2231%22%20y%3D%2215%22%20width%3D%2222%22%20height%3D%2238%22%20rx%3D%224%22%20fill%3D%22%23F6F6F3%22/%3E%3Cpath%20d%3D%22M38%2030l4-6v8h4l-4%208v-6z%22%20fill%3D%22%232E3035%22/%3E%3Cpath%20d%3D%22M42%2060v14%22%20stroke%3D%22%239AA3AD%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E">
 <style>
-  :root { --bg:#f5f5f7; --side:#ececf0; --card:#fff; --text:#1d1d1f; --muted:#86868b; --line:#e5e5ea; --field:#f2f2f5;
-          --accent:#0071e3; --accent-soft:#0071e314; --on-accent:#fff; --brand:#0071e3; --brand-soft:#0071e314; --danger:#d7263d; --good:#1a8f4c; --warn:#b26a00;
-          --shadow:0 .5px 1px #0000000d, 0 6px 20px -6px #00000014; --shadow-pop:0 12px 40px -8px #0000002e; }
+  :root { --bg:#f6f4f1; --side:#efeae3; --card:#fff; --text:#211c18; --muted:#8c8178; --line:#ece6de; --field:#f3efe9;
+          --accent:#e06231; --accent-ink:#b84f22; --accent-soft:#e0623114; --on-accent:#fff; --brand:#e06231; --brand-soft:#e0623114;
+          --danger:#c9372e; --good:#1a8f4c; --warn:#b26a00;
+          --mono:ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+          --shadow:0 .5px 1px #00000010, 0 8px 22px -8px #3a271a1f; --shadow-pop:0 14px 44px -10px #2a1c1238; }
   /* Theme: "auto" follows the system; data-theme on <html> forces light or dark. */
-  :root[data-theme=dark] { color-scheme:dark; --bg:#161618; --side:#1e1e21; --card:#232326; --text:#f5f5f7; --muted:#98989d; --line:#323236; --field:#2c2c30;
-          --accent:#0a84ff; --accent-soft:#0a84ff26; --brand:#0a84ff; --brand-soft:#0a84ff26; --danger:#ff453a; --good:#30d158; --warn:#ff9f0a; --shadow:none; --shadow-pop:0 16px 50px -10px #00000070; }
+  :root[data-theme=dark] { color-scheme:dark; --bg:#19161400; --bg:#1a1613; --side:#221d19; --card:#26211d; --text:#f3eee9; --muted:#a69b90; --line:#352e28; --field:#2e2823;
+          --accent:#f4784a; --accent-ink:#f98a5e; --accent-soft:#f4784a26; --brand:#f4784a; --brand-soft:#f4784a26;
+          --danger:#ff6b5e; --good:#30d158; --warn:#ff9f0a; --mono:ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+          --shadow:none; --shadow-pop:0 16px 50px -10px #00000070; }
   :root[data-theme=light] { color-scheme:light; }
   /* Extra colour themes, the same family as iOS Panic Reader. */
+  :root { --accent-ink:var(--accent); --mono:ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   :root[data-theme=night] { color-scheme:dark; --bg:#0b1220; --side:#0d1526; --card:#111a2e; --text:#e5e7eb; --muted:#94a3b8; --line:#1e2a44;
-          --field:#18233b; --accent:#60a5fa; --accent-soft:#60a5fa2b; --on-accent:#0b1220; --danger:#f87171; --good:#4ade80; --warn:#fbbf24; --shadow:none; }
+          --field:#18233b; --accent:#60a5fa; --accent-ink:#7db6fb; --accent-soft:#60a5fa2b; --on-accent:#0b1220; --danger:#f87171; --good:#4ade80; --warn:#fbbf24; --shadow:none; }
   :root[data-theme=mint] { color-scheme:light; --bg:#eef5f3; --side:#e2eeea; --card:#fff; --text:#1f2937; --muted:#5b6b67; --line:#d6e5e0;
           --field:#e8f2ef; --accent:#0f766e; --accent-soft:#0f766e18; --on-accent:#fff; }
   :root[data-theme=graphite] { color-scheme:dark; --bg:#141414; --side:#181818; --card:#1e1e1e; --text:#f5f5f5; --muted:#a3a3a3; --line:#2c2c2c;
           --field:#262626; --accent:#f59e0b; --accent-soft:#f59e0b2b; --on-accent:#111; --danger:#f87171; --good:#4ade80; --warn:#fbbf24; --shadow:none; }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme=light]) { color-scheme:dark; --bg:#161618; --side:#1e1e21; --card:#232326; --text:#f5f5f7; --muted:#98989d; --line:#323236; --field:#2c2c30;
-            --accent:#0a84ff; --accent-soft:#0a84ff26; --brand:#0a84ff; --brand-soft:#0a84ff26; --danger:#ff453a; --good:#30d158; --warn:#ff9f0a; --shadow:none; --shadow-pop:0 16px 50px -10px #00000070; }
+    :root:not([data-theme=light]) { color-scheme:dark; --bg:#161618; --side:#1e1e21; --card:#232326; --text:#f5f5f7; --muted:#98989d; --bg:#1a1613; --side:#221d19; --card:#26211d; --text:#f3eee9; --muted:#a69b90; --line:#352e28; --field:#2e2823;
+            --accent:#f4784a; --accent-ink:#f98a5e; --accent-soft:#f4784a26; --brand:#f4784a; --brand-soft:#f4784a26; --danger:#ff6b5e; --good:#30d158; --warn:#ff9f0a;
+            --mono:ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; --shadow:none; --shadow-pop:0 16px 50px -10px #00000070; }
   }
   * { box-sizing:border-box; }
   html, body { height:100%; }
@@ -41,7 +47,7 @@
   nav a svg { color:var(--muted); }
   nav a:hover { background:var(--line); }
   nav a.on { background:var(--accent-soft); font-weight:600; }
-  nav a.on, nav a.on svg { color:var(--accent); }
+  nav a.on, nav a.on svg { color:var(--accent-ink); }
   nav .count { margin-left:auto; font-size:11px; color:var(--muted); }
   .conn { margin-top:auto; padding:10px; border-radius:10px; background:var(--card); display:flex; gap:8px; align-items:center; font-size:12px; }
   .dot { width:8px; height:8px; border-radius:50%; background:var(--muted); flex:none; }
@@ -96,7 +102,7 @@
   .phone { width:42px; height:42px; border-radius:11px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; flex:none; }
   .phone svg { width:22px; height:22px; }
   .dev select { font-weight:600; font-size:14px; }
-  .info { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px 16px; margin-top:14px; }
+  .info { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px 20px; margin-top:16px; }
   .info:empty { display:none; }
   .info span { display:block; color:var(--muted); font-size:11px; margin-bottom:1px; }
   .info b { font-weight:600; }
@@ -153,7 +159,8 @@
   th { text-align:left; font-weight:500; color:var(--muted); font-size:11.5px; padding:6px 8px; }
   td { padding:9px 8px; border-top:1px solid var(--line); vertical-align:top; }
   tr.dev-row { cursor:pointer; } tr.dev-row:hover td { background:var(--accent-soft); }
-  td.mono { font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:12px; }
+  .mono, td.mono, code { font-family:var(--mono); font-size:12.5px; letter-spacing:-.01em; }
+  a, #driverHint a { color:var(--accent-ink); }
   .ev { display:grid; grid-template-columns:130px 14px 150px 1fr; gap:8px; padding:4px 0; align-items:start; }
   .ev .st { margin-top:6px; } .ev time { color:var(--muted); font-size:12px; } .ev small { color:var(--muted); }
   tr.events td { background:var(--field); border-top:0; padding:8px 16px; }
@@ -2820,15 +2827,15 @@ async function loadInfo(record) {
   info = d;
   const act = d.activation === "Activated" ? `<span class="good">${T("Активирован")}</span>`
             : d.activation === "Unactivated" ? `<span class="warn">${T("Не активирован")}</span>` : esc(d.activation);
-  const items = [["Модель", esc(T(d.model_name) + (d.capacity ? ", " + cap(d.capacity) : ""))], ["iOS", esc(d.ios && `${d.ios} (${d.build})`)], ["Серийный №", esc(d.serial)],
-                 ["IMEI", esc(d.imei)], ["Активация", act]];
-  if (d.imei2) items.splice(4, 0, ["IMEI 2", esc(d.imei2)]);
+  const items = [["Модель", esc(T(d.model_name) + (d.capacity ? ", " + cap(d.capacity) : ""))], ["iOS", esc(d.ios && `${d.ios} (${d.build})`)], ["Серийный №", `<span class="mono">${esc(d.serial)}</span>`],
+                 ["IMEI", `<span class="mono">${esc(d.imei)}</span>`], ["Активация", act]];
+  if (d.imei2) items.splice(4, 0, ["IMEI 2", `<span class="mono">${esc(d.imei2)}</span>`]);
   const b = d.battery;
   if (b) {
     if (b.health != null) {
       const cls = b.health >= 85 ? "good" : b.health >= 80 ? "warn" : "bad";
-      items.push(["Ёмкость батареи", `<span class="${cls}">${Math.min(b.health, 100)}%</span> · ${b.full_mah}/${b.design_mah} ${T("мАч")}`
-        + (b.health > 100 ? ` · ${T("новая батарея")}` : "")]);
+      items.push(["Ёмкость батареи", `<span class="${cls}">${Math.min(b.health, 100)}%</span>`
+        + (b.health > 100 ? ` <small class="empty">${T("новая батарея")}</small>` : "")]);
     }
     if (b.level != null) items.push(["Заряд", `${b.level}%${b.charging ? " ⚡" : ""}`]);
     if (b.cycles != null) items.push(["Циклы", esc(b.cycles)]);
