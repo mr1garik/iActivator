@@ -480,6 +480,7 @@ EN: dict[str, str] = {
     "Опишите, что не работает, и приложите отчёт (кнопка «Скопировать отчёт» вставит его сюда).": "Describe what is not working and attach the report (the \"Copy the report\" button puts it here).",
     "Версия": "Version",
     "iActivator-отчёт-{date}.txt": "iActivator-report-{date}.txt",
+    "Не удалось с попытки {n} — повторяю через пару секунд…": "Attempt {n} failed — retrying in a couple of seconds…",
 }
 
 # Russian source -> Ukrainian.
@@ -915,6 +916,7 @@ UK: dict[str, str] = {
     "Опишите, что не работает, и приложите отчёт (кнопка «Скопировать отчёт» вставит его сюда).": "Опишіть, що не працює, і додайте звіт (кнопка «Скопіювати звіт» вставить його сюди).",
     "Версия": "Версія",
     "iActivator-отчёт-{date}.txt": "iActivator-звіт-{date}.txt",
+    "Не удалось с попытки {n} — повторяю через пару секунд…": "Не вдалося зі спроби {n} — повторюю за кілька секунд…",
 }
 
 

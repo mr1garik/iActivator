@@ -1064,38 +1064,60 @@ class Activator:
                 return True
         return False
 
+    ACTIVATION_ATTEMPTS = 3
+
     async def activate(self) -> None:
-        # Activation goes through this computer's internet connection over USB,
-        # so the iPhone itself does not need Wi-Fi for this step.
-        service = MobileActivationService(self.lockdown)
-        state = await service.state()
-        if state != "Unactivated":
-            self.log(t("Активация не требуется (состояние: {state}).", state=state))
-            return
-        self.log("Активация через серверы Apple (интернет компьютера)…")
-        try:
-            if 0 < ios_major(self.lockdown.all_values.get("ProductVersion")) < LEGACY_ACTIVATION_BELOW_IOS:
-                await self._activate_legacy()
-            else:
-                await service.activate(skip_apple_id_query=True)
-        except MobileActivationException as e:
-            if "iCloud" in str(e) or "Activation Lock" in str(e):
-                raise UserFacingError(t(
-                    "На устройстве включена Блокировка активации (Найти iPhone). "
-                    "Введите Apple ID владельца на самом iPhone или снимите устройство с аккаунта "
-                    "на icloud.com/find. Программа не обходит эту блокировку."
-                )) from e
-            raise
-        except Exception:
-            # The connection can drop at the exact moment activation finishes and
-            # surface as a generic error (e.g. "coroutine ignored GeneratorExit"),
-            # even though Apple already activated the device. Re-check before failing.
-            if await self._now_activated():
+        # Activation goes through this computer's internet connection over USB, so the
+        # iPhone itself does not need Wi-Fi. On Windows the first try can fail for a
+        # transient reason — the Apple USB service or the device is not ready yet, or the
+        # connection blips mid-handshake — so retry a couple of times (reconnecting first)
+        # instead of failing. Activation Lock and other clear problems are not retried.
+        last_error: Optional[BaseException] = None
+        for attempt in range(1, self.ACTIVATION_ATTEMPTS + 1):
+            try:
+                state = await MobileActivationService(self.lockdown).state()
+                if state != "Unactivated":
+                    self.log("Устройство активировано." if attempt > 1
+                             else t("Активация не требуется (состояние: {state}).", state=state))
+                    return
+            except Exception:
+                pass  # couldn't read state (connection not ready) — the attempt below reconnects
+            if attempt == 1:
+                self.log("Активация через серверы Apple (интернет компьютера)…")
+            try:
+                if 0 < ios_major(self.lockdown.all_values.get("ProductVersion")) < LEGACY_ACTIVATION_BELOW_IOS:
+                    await self._activate_legacy()
+                else:
+                    await MobileActivationService(self.lockdown).activate(skip_apple_id_query=True)
                 self.log("Устройство активировано.")
+                await self.connect()
                 return
-            raise
-        self.log("Устройство активировано.")
-        await self.connect()
+            except UserFacingError:
+                raise  # a clear, final problem (e.g. no SIM on old iOS) — do not retry
+            except MobileActivationException as e:
+                if "iCloud" in str(e) or "Activation Lock" in str(e):
+                    raise UserFacingError(t(
+                        "На устройстве включена Блокировка активации (Найти iPhone). "
+                        "Введите Apple ID владельца на самом iPhone или снимите устройство с аккаунта "
+                        "на icloud.com/find. Программа не обходит эту блокировку."
+                    )) from e
+                last_error = e
+            except Exception as e:
+                # The connection can drop at the exact moment activation finishes and surface
+                # as a generic error, even though Apple already activated the device.
+                if await self._now_activated():
+                    self.log("Устройство активировано.")
+                    return
+                last_error = e
+            if attempt < self.ACTIVATION_ATTEMPTS:
+                self.log(t("Не удалось с попытки {n} — повторяю через пару секунд…", n=attempt))
+                await asyncio.sleep(2 * attempt)
+                try:
+                    await self.connect()
+                except Exception:
+                    pass
+        assert last_error is not None
+        raise last_error
 
     async def _activate_legacy(self) -> None:
         """Activation for iOS older than 10 (iPhone 4 / 4S era): no mobileactivationd, so

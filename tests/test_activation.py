@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 from unittest.mock import MagicMock
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -63,3 +64,68 @@ class LegacyActivation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+class ActivationRetry(unittest.TestCase):
+    """Activation retries a transient failure instead of giving up on the first try."""
+
+    def _activator(self):
+        from types import SimpleNamespace
+        a = core.Activator("SER1", lambda *x, **k: None)
+        async def noop(*x, **k): return None
+        a.lockdown = SimpleNamespace(all_values={"ProductVersion": "18.6"}, close=noop)
+        async def connect(): return a.lockdown
+        a.connect = connect
+        return a
+
+    def test_transient_first_failure_is_retried_then_succeeds(self):
+        import asyncio
+        state = {"activated": False, "calls": 0}
+
+        class FakeService:
+            def __init__(self, lockdown): pass
+            async def state(self): return "Activated" if state["activated"] else "Unactivated"
+            async def activate(self, skip_apple_id_query=False):
+                state["calls"] += 1
+                if state["calls"] == 1:
+                    raise RuntimeError("device not ready")   # transient
+                state["activated"] = True                     # succeeds on the retry
+
+        async def nosleep(*a): return None
+        with mock.patch.object(core, "MobileActivationService", FakeService), \
+             mock.patch.object(core.asyncio, "sleep", nosleep):
+            asyncio.run(self._activator().activate())
+        self.assertEqual(state["calls"], 2)       # retried once, did not give up
+        self.assertTrue(state["activated"])
+
+    def test_gives_up_after_the_limit(self):
+        import asyncio
+
+        class AlwaysFails:
+            def __init__(self, lockdown): pass
+            async def state(self): return "Unactivated"
+            async def activate(self, skip_apple_id_query=False): raise RuntimeError("still not ready")
+
+        async def nosleep(*a): return None
+        with mock.patch.object(core, "MobileActivationService", AlwaysFails), \
+             mock.patch.object(core.asyncio, "sleep", nosleep):
+            with self.assertRaises(RuntimeError):
+                asyncio.run(self._activator().activate())
+
+    def test_activation_lock_is_not_retried(self):
+        import asyncio
+        Exc = core.MobileActivationException
+        calls = {"n": 0}
+
+        class LockService:
+            def __init__(self, lockdown): pass
+            async def state(self): return "Unactivated"
+            async def activate(self, skip_apple_id_query=False):
+                calls["n"] += 1
+                raise Exc("The device is iCloud locked (Activation Lock).")
+
+        with mock.patch.object(core, "MobileActivationService", LockService):
+            with self.assertRaises(core.UserFacingError):
+                asyncio.run(self._activator().activate())
+        self.assertEqual(calls["n"], 1)           # locked -> stop immediately, no retry
