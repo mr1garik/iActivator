@@ -20,7 +20,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import __version__, applog, autostart, core, devicetext, documents, driver, history, i18n, notify, report, settings, tray, update
+from . import __version__, applog, autostart, core, devicetext, documents, driver, history, i18n, notify, report, settings, single, tray, update
 from .i18n import t
 
 # The iPhone's language and region. Shown the same in every program language: each language
@@ -1048,6 +1048,20 @@ def main():
         import os
         os.environ.setdefault("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
                               "--disable-gpu --disable-dev-shm-usage --js-flags=--max-old-space-size=128")
+
+    # Only one instance may run: a second launch (shortcut, autostart, updater,
+    # or a double click while hidden in the tray) must raise the existing window
+    # instead of adding another process and another tray icon.
+    def _raise_existing():
+        w = WINDOW
+        if w is not None:
+            try:
+                w.show()
+                w.restore()
+            except Exception:
+                pass
+    if not single.acquire(_raise_existing):
+        return  # another iActivator is already running; it was brought to the front
 
     port = _free_port()
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
