@@ -1116,7 +1116,8 @@ class Activator:
                     await self.connect()
                 except Exception:
                     pass
-        assert last_error is not None
+        if last_error is None:  # defensive: the loop always sets it before falling through
+            raise UserFacingError(t("Не удалось активировать устройство."))
         raise last_error
 
     async def _activate_legacy(self) -> None:

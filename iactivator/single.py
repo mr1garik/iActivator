@@ -25,13 +25,25 @@ _TIMEOUT = 1.5
 _sock: socket.socket | None = None  # kept referenced so it stays bound for the process life
 
 
+def _recv_exact(conn: socket.socket, n: int) -> bytes:
+    """Read exactly n bytes. TCP is a stream, so a single recv() may return fewer
+    bytes than asked; keep reading until we have them all (or the peer closes)."""
+    buf = b""
+    while len(buf) < n:
+        chunk = conn.recv(n - len(buf))
+        if not chunk:
+            break  # peer closed early
+        buf += chunk
+    return buf
+
+
 def _ping_primary() -> bool:
     """Ask an already-running instance to show itself. True only if one answered."""
     try:
         with socket.create_connection((HOST, PORT), timeout=_TIMEOUT) as c:
             c.settimeout(_TIMEOUT)
             c.sendall(_MAGIC)
-            return c.recv(len(_ACK)) == _ACK
+            return _recv_exact(c, len(_ACK)) == _ACK
     except OSError:
         return False
 
@@ -46,7 +58,7 @@ def _serve(sock: socket.socket, on_show) -> None:
             with conn:
                 try:
                     conn.settimeout(_TIMEOUT)
-                    if conn.recv(len(_MAGIC)) == _MAGIC:
+                    if _recv_exact(conn, len(_MAGIC)) == _MAGIC:
                         conn.sendall(_ACK)
                         try:
                             on_show()

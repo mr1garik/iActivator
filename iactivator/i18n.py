@@ -167,6 +167,7 @@ EN: dict[str, str] = {
         "Activation Lock (Find My) is on. Enter the owner's Apple ID on the iPhone itself, or remove "
         "the device from the account at icloud.com/find. This app does not bypass that lock.",
     "Устройство активировано.": "Device activated.",
+    "Не удалось активировать устройство.": "Could not activate the device.",
     "Язык: {language}, регион/локаль: {locale}, часовой пояс: {timezone}":
         "Language: {language}, region/locale: {locale}, time zone: {timezone}",
     "часовой пояс": "time zone", "24-часовой формат": "24-hour format",
@@ -604,6 +605,7 @@ UK: dict[str, str] = {
         "Введіть Apple ID власника на самому iPhone або зніміть пристрій з акаунта "
         "на icloud.com/find. Програма не обходить це блокування.",
     "Устройство активировано.": "Пристрій активовано.",
+    "Не удалось активировать устройство.": "Не вдалося активувати пристрій.",
     "Язык: {language}, регион/локаль: {locale}, часовой пояс: {timezone}":
         "Мова: {language}, регіон/локаль: {locale}, часовий пояс: {timezone}",
     "часовой пояс": "часовий пояс", "24-часовой формат": "24-годинний формат",
